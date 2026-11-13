@@ -13,23 +13,13 @@ local playerGui = player:WaitForChild("PlayerGui")
 local TARGET_GAME = 83907398368798
 local JOIN_PLACE = 96168869671905
 
-local function showWrongGame()
-	local TeleportService = game:GetService("TeleportService")
-	local UserInputService = game:GetService("UserInputService")
-	local TweenService = game:GetService("TweenService")
-
+local function showWrongGame(lobby)
+	local function showPrompt(message, buttonText, onClick)
 	local old = playerGui:FindFirstChild("moddy")
 	if old then
 		old:Destroy()
 	end
 
-	local C_TEXT = Color3.fromRGB(235, 235, 235)
-	local C_DIM = Color3.fromRGB(120, 120, 120)
-	local C_PANEL = Color3.fromRGB(10, 10, 10)
-	local C_IDLE = Color3.fromRGB(30, 30, 30)
-	local C_HOVER = Color3.fromRGB(55, 55, 55)
-	local C_DARK = Color3.fromRGB(12, 12, 12)
-	local C_RED = Color3.fromRGB(255, 90, 90)
 	local FONT = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 
 	local screen = Instance.new("ScreenGui")
@@ -39,178 +29,74 @@ local function showWrongGame()
 	screen.DisplayOrder = 2147483000
 	screen.Parent = playerGui
 
-	local WIDTH, HEIGHT, HEAD = 420, 170, 32
+	local text = Instance.new("TextLabel")
+	text.AnchorPoint = Vector2.new(0.5, 1)
+	text.Position = UDim2.new(0.5, 0, 0.5, -10)
+	text.Size = UDim2.fromOffset(560, 80)
+	text.BackgroundTransparency = 1
+	text.BorderSizePixel = 0
+	text.FontFace = FONT
+	text.Text = message
+	text.TextColor3 = Color3.fromRGB(235, 235, 235)
+	text.TextSize = 20
+	text.TextWrapped = true
+	text.TextYAlignment = Enum.TextYAlignment.Bottom
+	text.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	text.TextStrokeTransparency = 0.3
+	text.Parent = screen
 
-	local window = Instance.new("Frame")
-	window.AnchorPoint = Vector2.new(0.5, 0.5)
-	window.Position = UDim2.fromScale(0.5, 0.5)
-	window.Size = UDim2.fromOffset(WIDTH, HEIGHT)
-	window.BackgroundColor3 = C_PANEL
-	window.BackgroundTransparency = 0.12
-	window.BorderSizePixel = 0
-	window.Active = true
-	window.Parent = screen
+	local button = Instance.new("TextButton")
+	button.AnchorPoint = Vector2.new(0.5, 0)
+	button.Position = UDim2.new(0.5, 0, 0.5, 10)
+	button.Size = UDim2.fromOffset(160, 34)
+	button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	button.BorderSizePixel = 0
+	button.AutoButtonColor = true
+	button.FontFace = FONT
+	button.Text = buttonText
+	button.TextColor3 = Color3.fromRGB(235, 235, 235)
+	button.TextSize = 15
+	button.Parent = screen
 
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = C_TEXT
-	stroke.Thickness = 2
-	stroke.Transparency = 0.25
-	stroke.Parent = window
-
-	for _, corner in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
-		for _, size in ipairs({ UDim2.fromOffset(18, 2), UDim2.fromOffset(2, 18) }) do
-			local bar = Instance.new("Frame")
-			bar.AnchorPoint = Vector2.new(corner[1], corner[2])
-			bar.Position = UDim2.new(corner[1], corner[1] == 0 and -8 or 8, corner[2], corner[2] == 0 and -8 or 8)
-			bar.Size = size
-			bar.BackgroundColor3 = C_TEXT
-			bar.BorderSizePixel = 0
-			bar.Parent = window
-		end
+	local prompt = { screen = screen }
+	function prompt.set(newMessage, newButtonText, newClick)
+		text.Text = newMessage
+		button.Text = newButtonText
+		onClick = newClick
 	end
-
-	local header = Instance.new("Frame")
-	header.BackgroundColor3 = Color3.new(1, 1, 1)
-	header.BackgroundTransparency = 0.2
-	header.BorderSizePixel = 0
-	header.Size = UDim2.new(1, 0, 0, HEAD)
-	header.ZIndex = 2
-	header.Parent = window
-	local headerGradient = Instance.new("UIGradient")
-	headerGradient.Color = ColorSequence.new(C_PANEL, C_HOVER)
-	headerGradient.Parent = header
-
-	local dot = Instance.new("Frame")
-	dot.BackgroundColor3 = C_TEXT
-	dot.BorderSizePixel = 0
-	dot.Position = UDim2.fromOffset(14, 11)
-	dot.Size = UDim2.fromOffset(10, 10)
-	dot.Rotation = 45
-	dot.ZIndex = 3
-	dot.Parent = header
-
-	local function label(parent, text, size, color, x, y, w, h, align)
-		local item = Instance.new("TextLabel")
-		item.BackgroundTransparency = 1
-		item.BorderSizePixel = 0
-		item.Position = UDim2.fromOffset(x, y)
-		item.Size = UDim2.fromOffset(w, h)
-		item.Text = text
-		item.TextColor3 = color
-		item.TextSize = size
-		item.FontFace = FONT
-		item.TextXAlignment = align or Enum.TextXAlignment.Left
-		item.ZIndex = 3
-		item.Parent = parent
-		return item
-	end
-
-	label(header, "[ mod menu ]", 18, C_TEXT, 34, 0, 240, HEAD)
-
-	local function button(parent, text, x, y, w, h)
-		local item = Instance.new("TextButton")
-		item.AutoButtonColor = false
-		item.BackgroundColor3 = C_IDLE
-		item.BorderSizePixel = 0
-		item.Position = UDim2.fromOffset(x, y)
-		item.Size = UDim2.fromOffset(w, h)
-		item.Text = text
-		item.TextColor3 = C_TEXT
-		item.TextSize = 14
-		item.FontFace = FONT
-		item.ZIndex = 3
-		item.Parent = parent
-		local edge = Instance.new("UIStroke")
-		edge.Color = C_TEXT
-		edge.Transparency = 0.7
-		edge.Thickness = 1
-		edge.Parent = item
-		item.MouseEnter:Connect(function()
-			item.BackgroundColor3 = C_HOVER
-		end)
-		item.MouseLeave:Connect(function()
-			item.BackgroundColor3 = C_IDLE
-		end)
-		return item
-	end
-
-	local closeButton = button(header, "X", WIDTH - 46, 2, 36, 28)
-	closeButton.TextColor3 = C_RED
-	closeButton.MouseButton1Click:Connect(function()
+	function prompt.close()
 		screen:Destroy()
-	end)
-
-	label(window, "you are in the wrong game", 20, C_TEXT, 0, 52, WIDTH, 28, Enum.TextXAlignment.Center)
-	local note = label(window, "this menu only works in the right game", 12, C_DIM, 0, 82, WIDTH, 18, Enum.TextXAlignment.Center)
-
-	local failed = false
-
-	local function showNotice()
-		local noticeGui = Instance.new("ScreenGui")
-		noticeGui.Name = "moddyNotice"
-		noticeGui.ResetOnSpawn = false
-		noticeGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-		noticeGui.DisplayOrder = 2147483000
-		noticeGui.Parent = playerGui
-
-		local box = Instance.new("Frame")
-		box.AnchorPoint = Vector2.new(0.5, 0.5)
-		box.Position = UDim2.fromScale(0.5, 0.5)
-		box.Size = UDim2.fromOffset(400, 150)
-		box.BackgroundColor3 = C_PANEL
-		box.BackgroundTransparency = 0.12
-		box.BorderSizePixel = 0
-		box.Parent = noticeGui
-		local boxStroke = Instance.new("UIStroke")
-		boxStroke.Color = C_TEXT
-		boxStroke.Thickness = 2
-		boxStroke.Transparency = 0.25
-		boxStroke.Parent = box
-
-		local text = label(box, "Teleport failed the game is called Rob It! you can only use this menu in that game.", 16, C_TEXT, 20, 14, 360, 80, Enum.TextXAlignment.Center)
-		text.TextWrapped = true
-
-		local okButton = button(box, "Ok", 150, 102, 100, 30)
-		okButton.MouseButton1Click:Connect(function()
-			noticeGui:Destroy()
-		end)
 	end
+	button.MouseButton1Click:Connect(function()
+		if onClick then
+			onClick(prompt)
+		else
+			prompt.close()
+		end
+	end)
+	return prompt
+	end
+
+	if lobby then
+		showPrompt("You have to start a game then you can use the menu.", "Ok", nil)
+		return
+	end
+
+	local TeleportService = game:GetService("TeleportService")
+	local failed = false
+	local prompt
 
 	local function fail()
 		if failed then
 			return
 		end
 		failed = true
-		for _, object in ipairs(window:GetDescendants()) do
-			local goals = {}
-			if object:IsA("GuiObject") then
-				goals.BackgroundTransparency = 1
-			end
-			if object:IsA("TextLabel") or object:IsA("TextButton") then
-				goals.TextTransparency = 1
-			end
-			if object:IsA("UIStroke") then
-				goals.Transparency = 1
-			end
-			if next(goals) then
-				TweenService:Create(object, TweenInfo.new(0.4), goals):Play()
-			end
+		if prompt.screen.Parent then
+			prompt.set("Teleport failed the game is called Rob It! you can only use this menu in that game.", "Ok", nil)
 		end
-		TweenService:Create(window, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
-		TweenService:Create(stroke, TweenInfo.new(0.4), { Transparency = 1 }):Play()
-		task.delay(0.45, function()
-			screen:Destroy()
-			showNotice()
-		end)
 	end
 
-	TeleportService.TeleportInitFailed:Connect(function()
-		fail()
-	end)
-
-	local joinButton = button(window, "join the game?", (WIDTH - 200) / 2, 112, 200, 34)
-	joinButton.MouseButton1Click:Connect(function()
-		note.Text = "joining..."
+	prompt = showPrompt("You are in the wrong game.", "Join game.", function()
 		local ok = pcall(function()
 			TeleportService:Teleport(JOIN_PLACE, player)
 		end)
@@ -219,29 +105,18 @@ local function showWrongGame()
 		end
 	end)
 
-	local dragging = false
-	local dragStart, startPosition
-	header.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-			dragStart = input.Position
-			startPosition = window.Position
-		end
-	end)
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			local delta = input.Position - dragStart
-			window.Position = UDim2.new(startPosition.X.Scale, startPosition.X.Offset + delta.X, startPosition.Y.Scale, startPosition.Y.Offset + delta.Y)
-		end
-	end)
-	UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = false
+	local connection
+	connection = TeleportService.TeleportInitFailed:Connect(function()
+		fail()
+		if connection then
+			connection:Disconnect()
 		end
 	end)
 end
 
-if game.PlaceId ~= TARGET_GAME and game.GameId ~= TARGET_GAME then
+if game.PlaceId == JOIN_PLACE then
+	showWrongGame(true)
+elseif game.PlaceId ~= TARGET_GAME and game.GameId ~= TARGET_GAME then
 	showWrongGame()
 else
 
@@ -968,7 +843,7 @@ local function makeButton(parent, text, x, y, width)
 		TweenService:Create(strip, TWEEN_FAST, { Size = UDim2.new(0, 6, 1, 12) }):Play()
 	end)
 	button.MouseLeave:Connect(function()
-		TweenService:Create(buttonStroke, TWEEN_FAST, { Transparency = 1 }):Play()
+		TweenService:Create(buttonStroke, TWEEN_FAST, { Transparency = gui:GetAttribute("StrokeRest") or 1 }):Play()
 		TweenService:Create(strip, TWEEN_FAST, { Size = UDim2.new(0, 3, 1, 12) }):Play()
 	end)
 
@@ -982,6 +857,35 @@ local function makeButton(parent, text, x, y, width)
 	end)
 	button.MouseButton1Up:Connect(release)
 	button.MouseLeave:Connect(release)
+
+	button:SetAttribute("Wide", (width or 160) >= 80)
+	do
+		local rest = gui:GetAttribute("StrokeRest")
+		if rest then
+			local stripSide = gui:GetAttribute("ButtonStrip")
+			strip.Visible = stripSide ~= "none"
+			if stripSide == "right" then
+				strip.AnchorPoint = Vector2.new(1, 0)
+				strip.Position = UDim2.new(1, 8, 0, -6)
+			end
+			buttonStroke.Transparency = rest
+			buttonStroke.Thickness = gui:GetAttribute("ButtonThick") or 1
+			button.BackgroundTransparency = gui:GetAttribute("ButtonBg") or 0
+			if (width or 160) >= 80 then
+				local align = gui:GetAttribute("ButtonAlign")
+				button.TextXAlignment = align == "center" and Enum.TextXAlignment.Center or (align == "right" and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left)
+				local tag = button:FindFirstChild("Tag")
+				if tag and align == "right" then
+					tag.AnchorPoint = Vector2.new(0, 0)
+					tag.Position = UDim2.new(0, 0, 0, 0)
+					tag.TextXAlignment = Enum.TextXAlignment.Left
+				end
+			end
+		end
+	end
+	button:GetAttributeChangedSignal("Active"):Connect(function()
+		button.BackgroundTransparency = button:GetAttribute("Active") and 0 or (gui:GetAttribute("ButtonBg") or 0)
+	end)
 
 	button.Parent = parent
 	return button
@@ -1075,6 +979,7 @@ do
 	statusDot.Position = UDim2.fromOffset(0, 0)
 	statusDot.Size = UDim2.new(0, 6, 1, 0)
 	statusDot.ZIndex = 3
+	statusDot.Name = "Accent"
 	statusDot.Parent = header
 	addCorner(statusDot, 2)
 
@@ -1106,12 +1011,13 @@ do
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.ZIndex = 3
 	applyFont(title)
+	title.Name = "Title"
 	title.Parent = header
 
 	local fpsLabel = Instance.new("TextLabel")
 	fpsLabel.BackgroundTransparency = 1
 	fpsLabel.BorderSizePixel = 0
-	fpsLabel.Position = UDim2.fromOffset(WINDOW_WIDTH - 88 - 84, 0)
+	fpsLabel.Position = UDim2.new(1, -172, 0, 0)
 	fpsLabel.Size = UDim2.fromOffset(78, HEADER_HEIGHT)
 	fpsLabel.Text = ""
 	fpsLabel.TextColor3 = NOTE
@@ -1119,12 +1025,13 @@ do
 	fpsLabel.TextXAlignment = Enum.TextXAlignment.Right
 	fpsLabel.ZIndex = 3
 	applyFont(fpsLabel)
+	fpsLabel.Name = "Fps"
 	fpsLabel.Parent = header
 
 	local clockLabel = Instance.new("TextLabel")
 	clockLabel.BackgroundTransparency = 1
 	clockLabel.BorderSizePixel = 0
-	clockLabel.Position = UDim2.fromOffset(WINDOW_WIDTH - 94 - 52 - 110, 0)
+	clockLabel.Position = UDim2.new(1, -256, 0, 0)
 	clockLabel.Size = UDim2.fromOffset(110, HEADER_HEIGHT)
 	clockLabel.Text = ""
 	clockLabel.TextColor3 = NOTE
@@ -1132,6 +1039,7 @@ do
 	clockLabel.TextXAlignment = Enum.TextXAlignment.Right
 	clockLabel.ZIndex = 3
 	applyFont(clockLabel)
+	clockLabel.Name = "Clock"
 	clockLabel.Parent = header
 	task.spawn(function()
 		while clockLabel.Parent do
@@ -1174,6 +1082,7 @@ do
 	tabDivider.Position = UDim2.new(1, -1, 0, 0)
 	tabDivider.Size = UDim2.new(0, 1, 1, 0)
 	tabDivider.ZIndex = 3
+	tabDivider.Name = "Divider"
 	tabDivider.Parent = tabColumn
 end
 
@@ -1264,6 +1173,7 @@ local function makeCard(page, height)
 	edge.BorderSizePixel = 0
 	edge.BackgroundTransparency = 0.6
 	edge.Visible = false
+	edge.Name = "Edge"
 	edge.Position = UDim2.fromOffset(0, 0)
 	edge.Size = UDim2.new(1, 0, 0, 1)
 	edge.ZIndex = 3
@@ -1284,7 +1194,7 @@ local function makeTab(name, order, subtitle, canvasHeight)
 	if subtitle then
 		makeNote(page, subtitle, 24, 32)
 	end
-	pages[name] = { page = page, tab = tab }
+	pages[name] = { page = page, tab = tab, order = order }
 	tabButtons[tab] = true
 	return page
 end
@@ -1294,6 +1204,7 @@ do
 	hello.Position = UDim2.new(0, 12, 1, -24)
 	hello.Size = UDim2.new(1, -20, 0, 16)
 	hello.TextTruncate = Enum.TextTruncate.AtEnd
+	hello.Name = "Hello"
 end
 
 local mods = {}
@@ -1380,6 +1291,7 @@ ui.resetPosButton = makeButton(ui.miscCard, "reset position", 184, 48)
 ui.autoSaveModsButton = makeButton(ui.miscCard, "auto save mods", 12, 84)
 ui.autoSaveThemeButton = makeButton(ui.miscCard, "auto save theme", 184, 84)
 ui.trailMenuButton = makeButton(ui.miscCard, "trail menu", 356, 48)
+ui.menuTypesButton = makeButton(ui.miscCard, "menu types", 356, 84)
 makeNote(ui.miscCard, "created by Dawg", 12, 128)
 
 ui.serverPage = makeTab("server", 6, "go to different games")
@@ -1451,14 +1363,30 @@ mods.destroyGlassButton = makeButton(ui.destroyCard, "destroy glass", 184, 12)
 ui.vaultDoorButton = makeButton(ui.destroyCard, "destroy vault door", 356, 12)
 
 local closeButton = makeButton(header, "X", WINDOW_WIDTH - 46, 2, 36)
+closeButton.Position = UDim2.new(1, -46, 0, 2)
 closeButton.TextColor3 = RED
 closeButton.MouseEnter:Connect(function()
 	TweenService:Create(closeButton, TWEEN_FAST, { BackgroundColor3 = Color3.fromRGB(120, 30, 30) }):Play()
 end)
 
 local minimizeButton = makeButton(header, "-", WINDOW_WIDTH - 88, 2, 36)
+minimizeButton.Position = UDim2.new(1, -88, 0, 2)
 
 local currentTab = "player"
+ui.layout = { side = "left", x = TAB_WIDTH, y = HEADER_HEIGHT }
+ui.size = { w = WINDOW_WIDTH, h = WINDOW_HEIGHT }
+ui.indicatorGoal = function(tab)
+	local side = ui.layout.side
+	local mark = ui.layout.mark or 4
+	if side == "left" then
+		return { Position = UDim2.fromOffset(TAB_WIDTH - mark, tab.Position.Y.Offset), Size = UDim2.fromOffset(mark, tab.Size.Y.Offset) }
+	elseif side == "right" then
+		return { Position = UDim2.fromOffset(0, tab.Position.Y.Offset), Size = UDim2.fromOffset(mark, tab.Size.Y.Offset) }
+	elseif side == "top" then
+		return { Position = UDim2.fromOffset(tab.Position.X.Offset, 38 - mark), Size = UDim2.fromOffset(tab.Size.X.Offset, mark) }
+	end
+	return { Position = UDim2.fromOffset(tab.Position.X.Offset, 0), Size = UDim2.fromOffset(tab.Size.X.Offset, mark) }
+end
 
 local tabIndicator = Instance.new("Frame")
 tabIndicator.BackgroundColor3 = GREEN
@@ -1474,9 +1402,9 @@ local function showTab(name)
 	for pageName, entry in pairs(pages) do
 		local active = pageName == name
 		if active and (changed or not entry.page.Visible) then
-			entry.page.Position = UDim2.fromOffset(TAB_WIDTH + 18, HEADER_HEIGHT + TAB_BAR)
+			entry.page.Position = UDim2.fromOffset(ui.layout.x + 18, ui.layout.y)
 			TweenService:Create(entry.page, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Position = UDim2.fromOffset(TAB_WIDTH, HEADER_HEIGHT + TAB_BAR),
+				Position = UDim2.fromOffset(ui.layout.x, ui.layout.y),
 			}):Play()
 		end
 		if active and changed then
@@ -1495,10 +1423,7 @@ local function showTab(name)
 		entry.page.Visible = active
 		setButtonActive(entry.tab, active)
 		if active then
-			TweenService:Create(tabIndicator, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Position = UDim2.fromOffset(TAB_WIDTH - 4, entry.tab.Position.Y.Offset),
-				Size = UDim2.fromOffset(4, entry.tab.Size.Y.Offset),
-			}):Play()
+			TweenService:Create(tabIndicator, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), ui.indicatorGoal(entry.tab)):Play()
 		end
 	end
 end
@@ -1512,6 +1437,7 @@ end
 showTab("player")
 
 local DESCRIPTIONS = {
+	["menu types"] = "This will open a menu where you can build your own menu look.",
 	["SUPER HUMAN"] = "This will give you super speed.",
 	["instant grab"] = "This will make it so you don't have to wait when grabbing an item.",
 	["esp all items"] = "This will esp all the items around the map.",
@@ -3519,6 +3445,11 @@ local function createSideMenu(config)
 	end
 
 	function menu.open()
+		if menu.build then
+			local build = menu.build
+			menu.build = nil
+			build()
+		end
 		for _, other in ipairs(sideMenus) do
 			if other ~= menu then
 				other.close()
@@ -3615,7 +3546,7 @@ local safeMenu = createSideMenu({
 
 local sideMenuFollow = RunService.RenderStepped:Connect(function()
 	local position = window.AbsolutePosition
-	local x = position.X + WINDOW_WIDTH + 8
+	local x = position.X + window.AbsoluteSize.X + 8
 	if x + MENU_WIDTH > gui.AbsoluteSize.X then
 		x = math.max(0, position.X - MENU_WIDTH - 8)
 	end
@@ -5490,6 +5421,7 @@ do
 			setButtonActive(button, name == style)
 		end
 	end
+	bgMenu.build = function()
 	for index, name in ipairs(STYLES) do
 		local button = makeButton(bgMenu.scroll, name, 0, 0)
 		button.Size = UDim2.new(1, 0, 0, 28)
@@ -5501,6 +5433,7 @@ do
 	end
 	ui.arrange(bgMenu, bgButtons, { "plain" }, { "2d", "3d" })
 	refreshBgMenu()
+	end
 	ui.backgroundMenuButton.MouseButton1Click:Connect(bgMenu.open)
 	audioLevels.setBackground = setStyle
 	audioLevels.getBackground = function()
@@ -5685,6 +5618,7 @@ do
 	audioLevels.applyTheme = applyTheme
 
 	local themeMenu = createSideMenu({ title = "themes", custom = true })
+	themeMenu.build = function()
 	for index, themeName in ipairs(THEME_ORDER) do
 		local button = makeButton(themeMenu.scroll, themeName, 0, 0)
 		button.Size = UDim2.new(1, 0, 0, 28)
@@ -5694,7 +5628,10 @@ do
 		themeButtons[themeName] = button
 	end
 	ui.arrange(themeMenu, themeButtons, { "rainbow" }, { false })
-	setButtonActive(themeButtons.black, true)
+	for themeName, button in pairs(themeButtons) do
+		setButtonActive(button, themeName == current)
+	end
+	end
 	ui.rainbowCache = {}
 	ui.rainbowButtons = {}
 	ui.rainbowSeen = setmetatable({}, { __mode = "k" })
@@ -5925,6 +5862,13 @@ do
 	end)
 
 	local musicMenu = createSideMenu({ title = "music", custom = true })
+	musicMenu.build = function()
+		for _, object in ipairs(musicMenu.frame:GetDescendants()) do
+			if object.Name == "Tag" then
+				object:Destroy()
+			end
+		end
+	end
 	local list = musicMenu.scroll
 
 	local nowPlaying = makeNote(list, "now playing: none", 0, 0)
@@ -6984,6 +6928,7 @@ do
 	end
 
 	local trailMenu = createSideMenu({ title = "trail", custom = true })
+	trailMenu.build = function()
 	for index, name in ipairs(TRAIL_LOOKS) do
 		local button = makeButton(trailMenu.scroll, name, 0, 0)
 		button.Size = UDim2.new(1, 0, 0, 28)
@@ -7009,6 +6954,7 @@ do
 		button.LayoutOrder = button.LayoutOrder + ui.lookEnd + 1
 	end
 	refreshTrailMenu()
+	end
 	ui.trailMenuButton.MouseButton1Click:Connect(trailMenu.open)
 
 	local clickMenu = createSideMenu({ title = "click effects", custom = true })
@@ -7018,6 +6964,7 @@ do
 			setButtonActive(button, index == effectIndex)
 		end
 	end
+	clickMenu.build = function()
 	for index, effect in ipairs(EFFECTS) do
 		local button = makeButton(clickMenu.scroll, effect, 0, 0)
 		button.Size = UDim2.new(1, 0, 0, 28)
@@ -7031,6 +6978,7 @@ do
 	end
 	ui.arrange(clickMenu, ui.effectMap, { "none" }, { "2d", "3d" })
 	refreshEffectMenu()
+	end
 	ui.clickMenuButton.MouseButton1Click:Connect(clickMenu.open)
 	audioLevels.getEffect = function()
 		return EFFECTS[effectIndex]
@@ -8340,6 +8288,274 @@ task.spawn(function()
 end)
 
 do
+	local DISPLAY = { "tabs", "tab marker", "buttons", "strip", "outline", "text", "sections", "fill", "border", "header bar", "footer bar", "tab bar", "size", "title", "accent block", "visualizer", "clock", "fps", "greeting" }
+	local OPTIONS = {
+		tabs = { "bottom", "left", "right", "top" },
+		["tab marker"] = { "none", "thin", "normal", "thick", "chunky" },
+		buttons = { "solid", "dim", "half", "faint", "ghostly", "clear" },
+		strip = { "none", "left", "right" },
+		outline = { "none", "faint", "thin", "bright", "thick", "heavy", "chunky" },
+		text = { "center", "left", "right" },
+		sections = { "open", "faint", "filled", "boxed", "lined", "outlined", "bold outlined", "boxed lined", "filled lined", "solid", "solid lined", "bright outlined" },
+		fill = { "none", "thin glass", "glass", "smoky glass", "dark glass", "solid" },
+		border = { "none", "thin", "medium", "thick", "heavy", "chunky" },
+		["header bar"] = { "off", "on" },
+		["footer bar"] = { "off", "on" },
+		["tab bar"] = { "off", "on" },
+		size = { "micro", "tiny", "smaller", "small", "medium", "large", "larger", "huge", "giant", "colossal" },
+		title = { "off", "on" },
+		["accent block"] = { "off", "on" },
+		visualizer = { "off", "on" },
+		clock = { "off", "on" },
+		fps = { "off", "on" },
+		greeting = { "off", "on" },
+	}
+	local MARKS = { none = 0, thin = 2, normal = 4, thick = 8, chunky = 14 }
+	local BUTTON_BG = { solid = 0, dim = 0.3, half = 0.5, faint = 0.7, ghostly = 0.85, clear = 1 }
+	local OUTLINES = {
+		none = { stroke = 1, thick = 1 },
+		faint = { stroke = 0.7, thick = 1 },
+		thin = { stroke = 0.45, thick = 1 },
+		bright = { stroke = 0, thick = 1 },
+		thick = { stroke = 0.2, thick = 2 },
+		heavy = { stroke = 0, thick = 3 },
+		chunky = { stroke = 0, thick = 5 },
+	}
+	local ALIGN = { left = Enum.TextXAlignment.Left, center = Enum.TextXAlignment.Center, right = Enum.TextXAlignment.Right }
+	local CARDS = {
+		open = { bg = 1, stroke = 1 },
+		faint = { bg = 0.8, stroke = 1 },
+		filled = { bg = 0.3, stroke = 1 },
+		boxed = { bg = 0.55, stroke = 0.8 },
+		lined = { bg = 1, stroke = 1, line = true },
+		outlined = { bg = 1, stroke = 0.4 },
+		["bold outlined"] = { bg = 0.8, stroke = 0 },
+		["boxed lined"] = { bg = 0.55, stroke = 0.8, line = true },
+		["filled lined"] = { bg = 0.3, stroke = 1, line = true },
+		solid = { bg = 0, stroke = 1 },
+		["solid lined"] = { bg = 0, stroke = 1, line = true },
+		["bright outlined"] = { bg = 1, stroke = 0 },
+	}
+	local FILLS = { none = false, ["thin glass"] = 0.8, glass = 0.55, ["smoky glass"] = 0.42, ["dark glass"] = 0.3, solid = 0 }
+	local BORDERS = { none = 0, thin = 1, medium = 2, thick = 3, heavy = 6, chunky = 10 }
+	local SIZES = { micro = 0.55, tiny = 0.7, smaller = 0.78, small = 0.85, medium = 1, large = 1.15, larger = 1.25, huge = 1.35, giant = 1.55, colossal = 1.8 }
+	local HEADER_ITEMS = { title = "Title", ["accent block"] = "Accent", visualizer = "Visualizer", clock = "Clock", fps = "Fps" }
+	local choice = {
+		tabs = "left", ["tab marker"] = "normal", buttons = "solid", strip = "left", outline = "none", text = "left",
+		sections = "open", fill = "solid", border = "thin", ["header bar"] = "on", ["footer bar"] = "on", ["tab bar"] = "on",
+		size = "medium", title = "on", ["accent block"] = "on", visualizer = "on", clock = "on", fps = "on", greeting = "on",
+	}
+	local optionButtons = {}
+	local BAR = 38
+
+	local function styleButton(button)
+		local strip = button:FindFirstChild("Strip")
+		if not strip then
+			return
+		end
+		local pad = button:FindFirstChildOfClass("UIPadding")
+		strip.Visible = choice.strip ~= "none"
+		if choice.strip == "right" then
+			strip.AnchorPoint = Vector2.new(1, 0)
+			strip.Position = UDim2.new(1, pad and pad.PaddingRight.Offset or 8, 0, -6)
+		else
+			strip.AnchorPoint = Vector2.new(0, 0)
+			strip.Position = UDim2.new(0, pad and -pad.PaddingLeft.Offset or -12, 0, -6)
+		end
+		local stroke = button:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Transparency = OUTLINES[choice.outline].stroke
+			stroke.Thickness = OUTLINES[choice.outline].thick
+		end
+		button.BackgroundTransparency = button:GetAttribute("Active") and 0 or BUTTON_BG[choice.buttons]
+		if button:GetAttribute("Wide") then
+			button.TextXAlignment = ALIGN[choice.text]
+			local tag = button:FindFirstChild("Tag")
+			if tag then
+				local onLeft = choice.text == "right"
+				tag.AnchorPoint = Vector2.new(onLeft and 0 or 1, 0)
+				tag.Position = UDim2.new(onLeft and 0 or 1, 0, 0, 0)
+				tag.TextXAlignment = onLeft and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+			end
+		end
+	end
+
+	local function apply()
+		local card = CARDS[choice.sections]
+		gui:SetAttribute("StrokeRest", OUTLINES[choice.outline].stroke)
+		gui:SetAttribute("ButtonStrip", choice.strip)
+		gui:SetAttribute("ButtonBg", BUTTON_BG[choice.buttons])
+		gui:SetAttribute("ButtonThick", OUTLINES[choice.outline].thick)
+		gui:SetAttribute("ButtonAlign", choice.text)
+
+		local side = choice.tabs
+		local vertical = side == "left" or side == "right"
+		local glass = FILLS[choice.fill]
+		local fill = glass ~= false
+		local scaler = window:FindFirstChildOfClass("UIScale")
+		if scaler then
+			scaler.Scale = SIZES[choice.size]
+		end
+		for _, partName in ipairs({ "Stripes", "Shade", "Tint" }) do
+			local part = window:FindFirstChild(partName)
+			if part then
+				part.Visible = fill
+				if partName == "Stripes" then
+					part.BackgroundTransparency = glass or 0
+				elseif partName == "Tint" then
+					part.BackgroundTransparency = (glass and glass > 0) and math.min(1, glass + 0.2) or 0.3
+				end
+			end
+		end
+		local border = window:FindFirstChildOfClass("UIStroke")
+		if border then
+			border.Enabled = BORDERS[choice.border] > 0
+			border.Thickness = math.max(1, BORDERS[choice.border])
+		end
+		header.BackgroundTransparency = choice["header bar"] == "off" and 1 or (fill and 0.2 or 0)
+		footer.BackgroundTransparency = choice["footer bar"] == "off" and 1 or (fill and 0.3 or 0)
+		tabColumn.BackgroundTransparency = choice["tab bar"] == "off" and 1 or (fill and 0.1 or 0)
+		for section, childName in pairs(HEADER_ITEMS) do
+			local item = header:FindFirstChild(childName)
+			if item then
+				item.Visible = choice[section] == "on"
+			end
+		end
+
+		ui.layout.side = side
+		ui.layout.mark = MARKS[choice["tab marker"]]
+		ui.layout.x = side == "left" and TAB_WIDTH or 0
+		ui.layout.y = side == "top" and HEADER_HEIGHT + BAR or HEADER_HEIGHT
+
+		if vertical then
+			tabColumn.Position = side == "left" and UDim2.fromOffset(0, HEADER_HEIGHT) or UDim2.new(1, -TAB_WIDTH, 0, HEADER_HEIGHT)
+			tabColumn.Size = UDim2.new(0, TAB_WIDTH, 1, -(HEADER_HEIGHT + FOOTER_HEIGHT))
+		else
+			tabColumn.Position = side == "top" and UDim2.fromOffset(0, HEADER_HEIGHT) or UDim2.new(0, 0, 1, -(FOOTER_HEIGHT + BAR))
+			tabColumn.Size = UDim2.new(1, 0, 0, BAR)
+		end
+		local divider = tabColumn:FindFirstChild("Divider")
+		if divider then
+			if vertical then
+				divider.Position = side == "left" and UDim2.new(1, -1, 0, 0) or UDim2.new(0, 0, 0, 0)
+				divider.Size = UDim2.new(0, 1, 1, 0)
+			else
+				divider.Position = side == "top" and UDim2.new(0, 0, 1, -1) or UDim2.new(0, 0, 0, 0)
+				divider.Size = UDim2.new(1, 0, 0, 1)
+			end
+		end
+		local hello = tabColumn:FindFirstChild("Hello")
+		if hello then
+			hello.Visible = vertical and choice.greeting == "on"
+		end
+
+		for _, entry in pairs(pages) do
+			local slot = entry.order - 1
+			if vertical then
+				entry.tab.Position = UDim2.fromOffset(0, 8 + slot * 32)
+				entry.tab.Size = UDim2.fromOffset(TAB_WIDTH - 1, 30)
+			else
+				local step = math.floor((WINDOW_WIDTH - 24) / 7)
+				entry.tab.Position = UDim2.fromOffset(12 + slot * step, 4)
+				entry.tab.Size = UDim2.fromOffset(step - 6, 30)
+			end
+			entry.page.Position = UDim2.fromOffset(ui.layout.x, ui.layout.y)
+			entry.page.Size = UDim2.new(1, vertical and -TAB_WIDTH or 0, 1, -(HEADER_HEIGHT + FOOTER_HEIGHT + STAGE_HEIGHT + (vertical and 0 or BAR)))
+			for _, object in ipairs(entry.page:GetDescendants()) do
+				if object.Name == "Card" then
+					object.BackgroundTransparency = card.bg
+					local stroke = object:FindFirstChildOfClass("UIStroke")
+					if stroke then
+						stroke.Transparency = card.stroke
+					end
+					local edge = object:FindFirstChild("Edge")
+					if edge then
+						edge.Visible = card.line == true
+					end
+				end
+			end
+		end
+
+		tabIndicator.Visible = ui.layout.mark > 0
+		local current = pages[currentTab]
+		if current then
+			local goal = ui.indicatorGoal(current.tab)
+			tabIndicator.Position = goal.Position
+			tabIndicator.Size = goal.Size
+		end
+
+		for _, root in ipairs({ gui, tipGui }) do
+			for _, object in ipairs(root:GetDescendants()) do
+				if object:IsA("TextButton") then
+					styleButton(object)
+				end
+			end
+		end
+
+		for section, buttons in pairs(optionButtons) do
+			for name, button in pairs(buttons) do
+				setButtonActive(button, choice[section] == name)
+			end
+		end
+	end
+
+	local function setOption(section, name)
+		for _, candidate in ipairs(OPTIONS[section] or {}) do
+			if candidate == name then
+				choice[section] = name
+				return true
+			end
+		end
+		return false
+	end
+
+	audioLevels.setMenuType = function(text)
+		local changed = false
+		for section, name in string.gmatch(text, "([^|=]+)=([^|=]+)") do
+			if setOption(section, name) then
+				changed = true
+			end
+		end
+		if changed then
+			apply()
+		end
+	end
+	audioLevels.getMenuType = function()
+		local parts = {}
+		for index, section in ipairs(DISPLAY) do
+			parts[index] = section .. "=" .. choice[section]
+		end
+		return table.concat(parts, "|")
+	end
+
+	local typeMenu = createSideMenu({ title = "menu types", custom = true })
+	typeMenu.build = function()
+		local order = 0
+		for _, section in ipairs(DISPLAY) do
+			order = order + 1
+			local heading = makeNote(typeMenu.scroll, section, 0, 0)
+			heading.Size = UDim2.new(1, 0, 0, 18)
+			heading.LayoutOrder = order
+			optionButtons[section] = {}
+			for _, name in ipairs(OPTIONS[section]) do
+				order = order + 1
+				local button = makeButton(typeMenu.scroll, name, 0, 0)
+				button.Size = UDim2.new(1, 0, 0, 28)
+				button.LayoutOrder = order
+				button.MouseButton1Click:Connect(function()
+					if setOption(section, name) then
+						apply()
+					end
+				end)
+				optionButtons[section][name] = button
+				setButtonActive(button, choice[section] == name)
+			end
+		end
+	end
+	ui.menuTypesButton.MouseButton1Click:Connect(typeMenu.open)
+end
+
+do
 	local HttpService = game:GetService("HttpService")
 	local FILE_NAME = "moddy_settings.json"
 	local restored = false
@@ -8384,6 +8600,7 @@ do
 		end
 		if autoTheme then
 			data.theme = audioLevels.theme
+			data.menuType = audioLevels.getMenuType and audioLevels.getMenuType() or nil
 			data.effect = audioLevels.getEffect and audioLevels.getEffect() or nil
 			data.trail = audioLevels.getTrail and audioLevels.getTrail() or nil
 			data.background = audioLevels.getBackground and audioLevels.getBackground() or nil
@@ -8437,6 +8654,9 @@ do
 		refreshAutoButtons()
 		if type(data.theme) == "string" and audioLevels.applyTheme then
 			pcall(audioLevels.applyTheme, data.theme)
+		end
+		if type(data.menuType) == "string" and audioLevels.setMenuType then
+			pcall(audioLevels.setMenuType, data.menuType)
 		end
 		if type(data.background) == "string" and audioLevels.setBackground then
 			audioLevels.setBackground(data.background)
