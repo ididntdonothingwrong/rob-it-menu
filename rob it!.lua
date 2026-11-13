@@ -717,8 +717,8 @@ local function setButtonActive(button, active)
 		previous:Cancel()
 	end
 	local tween = TweenService:Create(button, TWEEN_FAST, {
-		BackgroundColor3 = active and GREEN or IDLE,
-		TextColor3 = active and DARK_TEXT or GREEN,
+		BackgroundColor3 = active and (gui:GetAttribute("ColorOn") or GREEN) or ((button:GetAttribute("Nav") and gui:GetAttribute("ColorButton")) or gui:GetAttribute("ColorOff") or IDLE),
+		TextColor3 = gui:GetAttribute("ColorText") or (active and DARK_TEXT or GREEN),
 	})
 	buttonTweens[button] = tween
 	tween:Play()
@@ -805,6 +805,9 @@ local function makeButton(parent, text, x, y, width)
 			clickSound.TimePosition = 0
 			clickSound:Play()
 		end
+		if gui:GetAttribute("ColorOff") then
+			return
+		end
 		flash.Size = UDim2.new(0, 0, 1, 12)
 		flash.BackgroundTransparency = 0.7
 		TweenService:Create(flash, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -829,16 +832,20 @@ local function makeButton(parent, text, x, y, width)
 
 	button.MouseEnter:Connect(function()
 		if not button:GetAttribute("Active") then
-			TweenService:Create(button, TWEEN_FAST, { BackgroundColor3 = HOVER }):Play()
+			local base = (button:GetAttribute("Nav") and gui:GetAttribute("ColorButton")) or gui:GetAttribute("ColorOff")
+			TweenService:Create(button, TWEEN_FAST, { BackgroundColor3 = base and base:Lerp(Color3.new(1, 1, 1), 0.25) or HOVER }):Play()
 		end
 	end)
 	button.MouseLeave:Connect(function()
 		if not button:GetAttribute("Active") then
-			TweenService:Create(button, TWEEN_FAST, { BackgroundColor3 = IDLE }):Play()
+			TweenService:Create(button, TWEEN_FAST, { BackgroundColor3 = (button:GetAttribute("Nav") and gui:GetAttribute("ColorButton")) or gui:GetAttribute("ColorOff") or IDLE }):Play()
 		end
 	end)
 
 	button.MouseEnter:Connect(function()
+		if gui:GetAttribute("ColorOff") then
+			return
+		end
 		TweenService:Create(buttonStroke, TWEEN_FAST, { Transparency = 0.25 }):Play()
 		TweenService:Create(strip, TWEEN_FAST, { Size = UDim2.new(0, 6, 1, 12) }):Play()
 	end)
@@ -853,12 +860,23 @@ local function makeButton(parent, text, x, y, width)
 		TweenService:Create(press, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	end
 	button.MouseButton1Down:Connect(function()
+		if gui:GetAttribute("ColorOff") then
+			return
+		end
 		TweenService:Create(press, TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 0.94 }):Play()
 	end)
 	button.MouseButton1Up:Connect(release)
 	button.MouseLeave:Connect(release)
 
 	button:SetAttribute("Wide", (width or 160) >= 80)
+	if gui:GetAttribute("ColorOff") then
+		button.BackgroundColor3 = gui:GetAttribute("ColorOff")
+		button.TextColor3 = gui:GetAttribute("ColorText")
+		local oldTag = button:FindFirstChild("Tag")
+		if oldTag then
+			oldTag:Destroy()
+		end
+	end
 	do
 		local rest = gui:GetAttribute("StrokeRest")
 		if rest then
@@ -1005,12 +1023,12 @@ do
 	title.BorderSizePixel = 0
 	title.Position = UDim2.fromOffset(18, 0)
 	title.Size = UDim2.fromOffset(TAB_WIDTH - 18, HEADER_HEIGHT)
-	title.Text = "MOD MENU"
+	title.Text = "Rob It! Mod Menu (1.3)"
 	title.TextColor3 = GREEN
 	title.TextSize = 18
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.ZIndex = 3
-	applyFont(title)
+	applyFont(title, true)
 	title.Name = "Title"
 	title.Parent = header
 
@@ -1120,13 +1138,11 @@ applyFont(statusLabel)
 statusLabel.Parent = footer
 
 local function makePage(canvasHeight)
-	local page = Instance.new(canvasHeight and "ScrollingFrame" or "Frame")
-	if canvasHeight then
-		page.CanvasSize = UDim2.fromOffset(0, canvasHeight)
-		page.ScrollBarThickness = 4
-		page.ScrollBarImageColor3 = GREEN
-		page.ScrollingDirection = Enum.ScrollingDirection.Y
-	end
+	local page = Instance.new("ScrollingFrame")
+	page.CanvasSize = UDim2.fromOffset(0, canvasHeight or 0)
+	page.ScrollBarThickness = 4
+	page.ScrollBarImageColor3 = GREEN
+	page.ScrollingDirection = Enum.ScrollingDirection.Y
 	page.BackgroundTransparency = 1
 	page.BorderSizePixel = 0
 	page.Position = UDim2.fromOffset(TAB_WIDTH, HEADER_HEIGHT + TAB_BAR)
@@ -1291,7 +1307,6 @@ ui.resetPosButton = makeButton(ui.miscCard, "reset position", 184, 48)
 ui.autoSaveModsButton = makeButton(ui.miscCard, "auto save mods", 12, 84)
 ui.autoSaveThemeButton = makeButton(ui.miscCard, "auto save theme", 184, 84)
 ui.trailMenuButton = makeButton(ui.miscCard, "trail menu", 356, 48)
-ui.menuTypesButton = makeButton(ui.miscCard, "menu types", 356, 84)
 makeNote(ui.miscCard, "created by Dawg", 12, 128)
 
 ui.serverPage = makeTab("server", 6, "go to different games")
@@ -1431,13 +1446,15 @@ end
 for pageName, entry in pairs(pages) do
 	entry.tab.MouseButton1Click:Connect(function()
 		showTab(pageName)
+		if ui.gorilla then
+			ui.gorillaView(true)
+		end
 	end)
 end
 
 showTab("player")
 
 local DESCRIPTIONS = {
-	["menu types"] = "This will open a menu where you can build your own menu look.",
 	["SUPER HUMAN"] = "This will give you super speed.",
 	["instant grab"] = "This will make it so you don't have to wait when grabbing an item.",
 	["esp all items"] = "This will esp all the items around the map.",
@@ -1603,7 +1620,6 @@ local minimized = false
 local function setMinimized(state)
 	minimized = state
 	minimizeButton.Text = state and "+" or "-"
-	tabColumn.Visible = not state
 	footer.Visible = not state
 	if state then
 		for _, entry in pairs(pages) do
@@ -1612,8 +1628,11 @@ local function setMinimized(state)
 	else
 		showTab(currentTab)
 	end
+	if ui.gorillaRefresh then
+		ui.gorillaRefresh()
+	end
 	TweenService:Create(window, TWEEN_FAST, {
-		Size = UDim2.fromOffset(WINDOW_WIDTH, state and HEADER_HEIGHT or WINDOW_HEIGHT),
+		Size = UDim2.fromOffset(ui.size.w, state and HEADER_HEIGHT or ui.size.h),
 	}):Play()
 end
 
@@ -3556,7 +3575,7 @@ local sideMenuFollow = RunService.RenderStepped:Connect(function()
 			menu.frame.Visible = show
 		end
 		if show then
-			menu.frame.Position = UDim2.fromOffset(x, position.Y)
+			menu.frame.Position = UDim2.fromOffset(x, position.Y + (ui.sideOffsetY or 0))
 		end
 	end
 	updateBrackets()
@@ -5870,6 +5889,7 @@ do
 		end
 	end
 	local list = musicMenu.scroll
+	ui.musicScroll = list
 
 	local nowPlaying = makeNote(list, "now playing: none", 0, 0)
 	nowPlaying.Size = UDim2.new(1, 0, 0, 16)
@@ -8242,7 +8262,17 @@ ui.lazersButton.MouseButton1Click:Connect(function()
 	end
 end)
 
-closeButton.MouseButton1Click:Connect(function()
+ui.panic = function()
+	for _, entry in pairs(toggleBindings) do
+		if entry.feature.enabled then
+			entry.feature.disable()
+		end
+		setButtonActive(entry.button, false)
+	end
+	setEspMode(nil)
+end
+
+ui.destroyMenu = function()
 	if saveSettings then
 		pcall(saveSettings)
 	end
@@ -8263,7 +8293,8 @@ closeButton.MouseButton1Click:Connect(function()
 	tipMoveConnection:Disconnect()
 	tipGui:Destroy()
 	gui:Destroy()
-end)
+end
+closeButton.MouseButton1Click:Connect(ui.destroyMenu)
 
 task.spawn(function()
 	local source
@@ -8287,279 +8318,1183 @@ task.spawn(function()
 	source:GetPropertyChangedSignal("Text"):Connect(update)
 end)
 
-do
-	local DISPLAY = { "tabs", "tab marker", "buttons", "strip", "outline", "text", "sections", "fill", "border", "header bar", "footer bar", "tab bar", "size", "title", "accent block", "visualizer", "clock", "fps", "greeting" }
-	local OPTIONS = {
-		tabs = { "bottom", "left", "right", "top" },
-		["tab marker"] = { "none", "thin", "normal", "thick", "chunky" },
-		buttons = { "solid", "dim", "half", "faint", "ghostly", "clear" },
-		strip = { "none", "left", "right" },
-		outline = { "none", "faint", "thin", "bright", "thick", "heavy", "chunky" },
-		text = { "center", "left", "right" },
-		sections = { "open", "faint", "filled", "boxed", "lined", "outlined", "bold outlined", "boxed lined", "filled lined", "solid", "solid lined", "bright outlined" },
-		fill = { "none", "thin glass", "glass", "smoky glass", "dark glass", "solid" },
-		border = { "none", "thin", "medium", "thick", "heavy", "chunky" },
-		["header bar"] = { "off", "on" },
-		["footer bar"] = { "off", "on" },
-		["tab bar"] = { "off", "on" },
-		size = { "micro", "tiny", "smaller", "small", "medium", "large", "larger", "huge", "giant", "colossal" },
-		title = { "off", "on" },
-		["accent block"] = { "off", "on" },
-		visualizer = { "off", "on" },
-		clock = { "off", "on" },
-		fps = { "off", "on" },
-		greeting = { "off", "on" },
+ui.buildBoard = function()
+	local PANEL_W, BAR_W, GAP, TOP, FOOT = 250, 58, 4, 32, 52
+	local WIDTH = PANEL_W + (BAR_W + GAP) * 2
+	local DARK_TITLE = 'ShibaGTs <font color="#8c8c8c">DARK</font> Menu'
+	local VERSION = "v1.0"
+	local GOLD_TITLE = "ShibaGT Gold " .. VERSION
+	local BLACK = Color3.fromRGB(0, 0, 0)
+	local WHITE_TEXT = Color3.fromRGB(255, 255, 255)
+	local YELLOW_TEXT = Color3.fromRGB(255, 230, 0)
+	local BOARDS = {
+		dark = {
+			panel = Color3.fromRGB(165, 0, 95), button = BLACK, text = WHITE_TEXT, on = Color3.fromRGB(0, 140, 0),
+			rows = 9, pitch = 33, height = 29, head = 50, tail = 8, subs = true, textSize = 17,
+		},
+		gold = {
+			panel = Color3.fromRGB(15, 15, 235), button = Color3.fromRGB(255, 255, 0), text = Color3.fromRGB(125, 125, 60), on = Color3.fromRGB(255, 140, 0),
+			rows = 9, pitch = 33, height = 29, head = 50, tail = 8, subs = false, textSize = 17,
+		},
+		genesis = {
+			panel = Color3.fromRGB(150, 5, 12), button = Color3.fromRGB(22, 22, 26), text = WHITE_TEXT, on = Color3.fromRGB(220, 25, 35),
+			rows = 9, pitch = 33, height = 29, head = 50, tail = 8, textSize = 19, bars = 1,
+			gradient = ColorSequence.new(Color3.fromRGB(45, 0, 2), Color3.fromRGB(240, 12, 22)),
+		},
 	}
-	local MARKS = { none = 0, thin = 2, normal = 4, thick = 8, chunky = 14 }
-	local BUTTON_BG = { solid = 0, dim = 0.3, half = 0.5, faint = 0.7, ghostly = 0.85, clear = 1 }
-	local OUTLINES = {
-		none = { stroke = 1, thick = 1 },
-		faint = { stroke = 0.7, thick = 1 },
-		thin = { stroke = 0.45, thick = 1 },
-		bright = { stroke = 0, thick = 1 },
-		thick = { stroke = 0.2, thick = 2 },
-		heavy = { stroke = 0, thick = 3 },
-		chunky = { stroke = 0, thick = 5 },
+	BOARDS["ii stupid"] = {
+		panel = Color3.fromRGB(255, 128, 0), button = Color3.fromRGB(170, 86, 0), text = Color3.fromRGB(255, 200, 140), on = Color3.fromRGB(105, 50, 0),
+		rows = 9, pitch = 33, height = 29, head = 50, tail = 8, textSize = 18, italic = true, nav = Color3.fromRGB(170, 86, 0),
 	}
-	local ALIGN = { left = Enum.TextXAlignment.Left, center = Enum.TextXAlignment.Center, right = Enum.TextXAlignment.Right }
-	local CARDS = {
-		open = { bg = 1, stroke = 1 },
-		faint = { bg = 0.8, stroke = 1 },
-		filled = { bg = 0.3, stroke = 1 },
-		boxed = { bg = 0.55, stroke = 0.8 },
-		lined = { bg = 1, stroke = 1, line = true },
-		outlined = { bg = 1, stroke = 0.4 },
-		["bold outlined"] = { bg = 0.8, stroke = 0 },
-		["boxed lined"] = { bg = 0.55, stroke = 0.8, line = true },
-		["filled lined"] = { bg = 0.3, stroke = 1, line = true },
-		solid = { bg = 0, stroke = 1 },
-		["solid lined"] = { bg = 0, stroke = 1, line = true },
-		["bright outlined"] = { bg = 1, stroke = 0 },
+	BOARDS.rexon = {
+		panel = Color3.fromRGB(100, 35, 170), button = Color3.fromRGB(38, 14, 78), text = WHITE_TEXT, on = Color3.fromRGB(150, 80, 230),
+		rows = 9, pitch = 33, height = 29, head = 50, tail = 8, textSize = 18, bold = true, bars = 1, nav = Color3.fromRGB(88, 28, 150), arrows = true,
 	}
-	local FILLS = { none = false, ["thin glass"] = 0.8, glass = 0.55, ["smoky glass"] = 0.42, ["dark glass"] = 0.3, solid = 0 }
-	local BORDERS = { none = 0, thin = 1, medium = 2, thick = 3, heavy = 6, chunky = 10 }
-	local SIZES = { micro = 0.55, tiny = 0.7, smaller = 0.78, small = 0.85, medium = 1, large = 1.15, larger = 1.25, huge = 1.35, giant = 1.55, colossal = 1.8 }
-	local HEADER_ITEMS = { title = "Title", ["accent block"] = "Accent", visualizer = "Visualizer", clock = "Clock", fps = "Fps" }
-	local choice = {
-		tabs = "left", ["tab marker"] = "normal", buttons = "solid", strip = "left", outline = "none", text = "left",
-		sections = "open", fill = "solid", border = "thin", ["header bar"] = "on", ["footer bar"] = "on", ["tab bar"] = "on",
-		size = "medium", title = "on", ["accent block"] = "on", visualizer = "on", clock = "on", fps = "on", greeting = "on",
+	local THEME_CYCLE = { dark = "gold", gold = "genesis", genesis = "ii stupid", ["ii stupid"] = "rexon", rexon = "dark" }
+	local REXON_TITLE = "Rexon Paid"
+	local function rgb(r, g, b)
+		return Color3.fromRGB(r, g, b)
+	end
+	local function fade(...)
+		local colors = { ... }
+		local points = {}
+		for index, color in ipairs(colors) do
+			points[index] = ColorSequenceKeypoint.new((index - 1) / (#colors - 1), color)
+		end
+		return ColorSequence.new(points)
+	end
+	local LIGHT, DARKT = rgb(255, 255, 255), rgb(15, 15, 15)
+	local COLOR_ORDER = {
+		"default", "orange", "blue magenta", "dark mode", "rainbow", "lava", "rock", "ice", "water", "minty", "pink", "purple",
+		"magenta cyan", "red fade", "orange fade", "yellow fade", "green fade", "blue fade", "purple fade", "magenta fade", "banana", "pride",
+		"trans", "silence", "transparent", "discord blurple", "blurple dark", "discord light", "clean dark", "shibagt gold", "shibagt genesis",
+		"rexon", "catppuccin mocha", "weed", "usa", "mint blue", "pumpkin spice", "chocolate chip", "light red", "winter", "fuchsia",
+		"lawn green", "abyss", "milky way", "oceanside", "sunset", "sky",
 	}
-	local optionButtons = {}
-	local BAR = 38
+	local COLOR_THEMES = {
+		orange = { rgb(255, 128, 0), rgb(170, 86, 0), rgb(255, 200, 140), rgb(105, 50, 0) },
+		["blue magenta"] = { rgb(120, 0, 255), rgb(60, 0, 120), LIGHT, rgb(255, 80, 255), fade = fade(rgb(0, 0, 255), rgb(255, 0, 255)) },
+		["dark mode"] = { rgb(20, 20, 20), rgb(46, 46, 46), LIGHT, rgb(100, 100, 100) },
+		rainbow = { rgb(255, 0, 0), rgb(30, 30, 30), LIGHT, rgb(110, 110, 110), anim = "rainbow" },
+		lava = { rgb(200, 40, 0), rgb(90, 15, 0), rgb(255, 220, 150), rgb(255, 140, 0), fade = fade(rgb(255, 120, 0), rgb(120, 0, 0)) },
+		rock = { rgb(110, 110, 110), rgb(70, 70, 70), LIGHT, rgb(40, 40, 40) },
+		ice = { rgb(170, 225, 250), rgb(120, 185, 225), rgb(15, 45, 85), LIGHT },
+		water = { rgb(0, 100, 220), rgb(0, 60, 150), LIGHT, rgb(0, 190, 230) },
+		minty = { rgb(120, 230, 180), rgb(70, 180, 135), rgb(15, 60, 45), LIGHT },
+		pink = { rgb(255, 130, 190), rgb(200, 80, 140), LIGHT, rgb(255, 205, 230) },
+		purple = { rgb(120, 40, 200), rgb(70, 20, 125), LIGHT, rgb(190, 120, 255) },
+		["magenta cyan"] = { rgb(120, 120, 255), rgb(40, 40, 70), LIGHT, rgb(255, 255, 255), fade = fade(rgb(255, 0, 255), rgb(0, 255, 255)) },
+		["red fade"] = { rgb(200, 0, 0), rgb(40, 0, 0), LIGHT, rgb(255, 90, 90), fade = fade(rgb(255, 0, 0), rgb(0, 0, 0)) },
+		["orange fade"] = { rgb(220, 110, 0), rgb(45, 22, 0), LIGHT, rgb(255, 170, 70), fade = fade(rgb(255, 128, 0), rgb(0, 0, 0)) },
+		["yellow fade"] = { rgb(220, 200, 0), rgb(45, 40, 0), LIGHT, rgb(255, 240, 100), fade = fade(rgb(255, 235, 0), rgb(0, 0, 0)) },
+		["green fade"] = { rgb(0, 190, 0), rgb(0, 40, 0), LIGHT, rgb(110, 255, 110), fade = fade(rgb(0, 255, 0), rgb(0, 0, 0)) },
+		["blue fade"] = { rgb(0, 0, 200), rgb(0, 0, 45), LIGHT, rgb(110, 140, 255), fade = fade(rgb(0, 0, 255), rgb(0, 0, 0)) },
+		["purple fade"] = { rgb(120, 0, 200), rgb(28, 0, 45), LIGHT, rgb(190, 110, 255), fade = fade(rgb(150, 0, 255), rgb(0, 0, 0)) },
+		["magenta fade"] = { rgb(200, 0, 200), rgb(45, 0, 45), LIGHT, rgb(255, 120, 255), fade = fade(rgb(255, 0, 255), rgb(0, 0, 0)) },
+		banana = { rgb(255, 225, 60), rgb(120, 80, 30), rgb(255, 245, 190), rgb(70, 45, 15) },
+		pride = { rgb(255, 0, 0), rgb(25, 25, 25), LIGHT, rgb(110, 110, 110), fade = fade(rgb(228, 3, 3), rgb(255, 140, 0), rgb(255, 237, 0), rgb(0, 128, 38), rgb(0, 77, 255), rgb(117, 7, 135)) },
+		trans = { rgb(91, 206, 250), rgb(35, 35, 45), LIGHT, rgb(120, 120, 135), fade = fade(rgb(91, 206, 250), rgb(245, 169, 184), rgb(255, 255, 255), rgb(245, 169, 184), rgb(91, 206, 250)) },
+		silence = { rgb(0, 0, 0), rgb(255, 255, 255), DARKT, rgb(150, 150, 150) },
+		transparent = { rgb(0, 0, 0), rgb(30, 30, 30), LIGHT, rgb(110, 110, 110), clear = true },
+		["discord blurple"] = { rgb(88, 101, 242), rgb(54, 57, 63), LIGHT, rgb(35, 39, 42) },
+		["blurple dark"] = { rgb(35, 39, 42), rgb(54, 57, 63), LIGHT, rgb(88, 101, 242) },
+		["discord light"] = { rgb(255, 255, 255), rgb(227, 229, 232), DARKT, rgb(88, 101, 242) },
+		["clean dark"] = { rgb(12, 12, 14), rgb(28, 28, 32), rgb(230, 230, 235), rgb(70, 70, 80) },
+		["shibagt gold"] = { rgb(15, 15, 235), rgb(255, 255, 0), rgb(125, 125, 60), rgb(255, 140, 0), nav = rgb(0, 0, 0) },
+		["shibagt genesis"] = { rgb(150, 5, 12), rgb(22, 22, 26), LIGHT, rgb(220, 25, 35), fade = fade(rgb(45, 0, 2), rgb(240, 12, 22)) },
+		rexon = { rgb(100, 35, 170), rgb(38, 14, 78), LIGHT, rgb(150, 80, 230) },
+		["catppuccin mocha"] = { rgb(30, 30, 46), rgb(49, 50, 68), rgb(205, 214, 244), rgb(203, 166, 247) },
+		weed = { rgb(30, 110, 30), rgb(15, 60, 15), rgb(200, 255, 170), rgb(120, 200, 60) },
+		usa = { rgb(178, 34, 52), rgb(25, 25, 45), LIGHT, rgb(110, 110, 140), fade = fade(rgb(178, 34, 52), rgb(255, 255, 255), rgb(60, 59, 110)) },
+		["mint blue"] = { rgb(120, 220, 230), rgb(60, 150, 180), LIGHT, rgb(200, 255, 245), fade = fade(rgb(150, 255, 210), rgb(80, 160, 255)) },
+		["pumpkin spice"] = { rgb(215, 110, 35), rgb(110, 55, 20), rgb(255, 230, 200), rgb(70, 30, 10) },
+		["chocolate chip"] = { rgb(225, 195, 150), rgb(90, 55, 30), rgb(255, 240, 220), rgb(50, 28, 14) },
+		["light red"] = { rgb(255, 120, 120), rgb(200, 70, 70), LIGHT, rgb(255, 200, 200) },
+		winter = { rgb(235, 245, 255), rgb(170, 205, 235), rgb(20, 50, 90), rgb(255, 255, 255), fade = fade(rgb(255, 255, 255), rgb(170, 215, 255)) },
+		fuchsia = { rgb(255, 0, 170), rgb(150, 0, 100), LIGHT, rgb(255, 130, 215) },
+		["lawn green"] = { rgb(124, 252, 0), rgb(60, 140, 0), LIGHT, rgb(210, 255, 150) },
+		abyss = { rgb(4, 8, 28), rgb(12, 20, 55), rgb(170, 195, 255), rgb(40, 70, 170) },
+		["milky way"] = { rgb(30, 10, 60), rgb(18, 10, 36), rgb(230, 215, 255), rgb(120, 70, 200), fade = fade(rgb(70, 30, 130), rgb(5, 5, 15)) },
+		oceanside = { rgb(0, 150, 170), rgb(0, 70, 95), LIGHT, rgb(120, 230, 220), fade = fade(rgb(0, 200, 180), rgb(0, 60, 150)) },
+		sunset = { rgb(230, 100, 60), rgb(70, 25, 70), LIGHT, rgb(255, 180, 90), fade = fade(rgb(255, 150, 50), rgb(110, 30, 130)) },
+		sky = { rgb(140, 200, 255), rgb(80, 150, 215), LIGHT, rgb(230, 245, 255), fade = fade(rgb(110, 180, 255), rgb(235, 245, 255)) },
+	}
 
-	local function styleButton(button)
-		local strip = button:FindFirstChild("Strip")
-		if not strip then
-			return
+	local NAV_CYCLE = { top = "sides", sides = "rows", rows = "top" }
+	local THEME_PRESETS = {
+		dark = { nav = "top", wide = false, subs = true },
+		gold = { nav = "sides", wide = false, subs = false },
+		genesis = { nav = "sides", wide = false, subs = false },
+		["ii stupid"] = { nav = "rows", wide = true, subs = false },
+		rexon = { nav = "sides", wide = false, subs = false },
+	}
+	local STUPID_TITLE = "ii's <b>Stupid</b> Menu"
+	local GENESIS_TITLE = "ShibaGT Genesis " .. VERSION
+	local PLAIN_SHADE = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(205, 205, 205))
+	local state = {
+		theme = "ii stupid", nav = "rows", subs = false, wide = true, color = "default", font = "arial", volume = "normal", name = "",
+		transparent = false, outline = false, animTitle = false, noTitle = false, noFps = false, sounds = true, alpha = false,
+		scale = "normal", style = "normal", rapid = false, noBrackets = false, textSize = "normal",
+		lock = false, noToasts = false, textOutline = false, rainbowTitle = false, faded = false, noCredit = false, showTime = false,
+	}
+	state.rainbowOutline = false
+	state.slim = false
+	state.flip = false
+	state.outlineSize = "normal"
+	state.titlePos = "default"
+	state.titleSize = "normal"
+	local OUTLINE_CYCLE = { thin = "normal", normal = "thick", thick = "thin" }
+	local OUTLINE_SIZES = { thin = 1, normal = 3, thick = 6 }
+	local POS_CYCLE = { default = "left", left = "center", center = "right", right = "default" }
+	local POS_ALIGN = { left = Enum.TextXAlignment.Left, center = Enum.TextXAlignment.Center, right = Enum.TextXAlignment.Right }
+	local SIZE_CYCLE = { small = "normal", normal = "large", large = "small" }
+	local SIZE_OFFSET = { small = -4, normal = 0, large = 4 }
+	showToast = function() end
+	local SCALE_CYCLE = { small = "normal", normal = "large", large = "huge", huge = "small" }
+	local SCALES = { small = 0.85, normal = 1, large = 1.2, huge = 1.4 }
+	local STYLE_CYCLE = { normal = "bold", bold = "italic", italic = "normal" }
+	local function show(label, value)
+		if state.noBrackets then
+			return label .. ": " .. value
 		end
-		local pad = button:FindFirstChildOfClass("UIPadding")
-		strip.Visible = choice.strip ~= "none"
-		if choice.strip == "right" then
-			strip.AnchorPoint = Vector2.new(1, 0)
-			strip.Position = UDim2.new(1, pad and pad.PaddingRight.Offset or 8, 0, -6)
-		else
-			strip.AnchorPoint = Vector2.new(0, 0)
-			strip.Position = UDim2.new(0, pad and -pad.PaddingLeft.Offset or -12, 0, -6)
+		return label .. " [current = " .. value .. "]"
+	end
+	local FONT_ORDER = { "arial", "code", "arcade", "gotham", "fredoka", "bangers", "scifi", "cartoon" }
+	local FONT_ENUMS = { arial = { "Arial", "ArialBold" }, code = { "Code", "Code" }, arcade = { "Arcade", "Arcade" }, gotham = { "Gotham", "GothamBold" }, fredoka = { "FredokaOne", "FredokaOne" }, bangers = { "Bangers", "Bangers" }, scifi = { "SciFi", "SciFi" }, cartoon = { "Cartoon", "Cartoon" } }
+	local VOLUME_CYCLE = { quiet = "normal", normal = "loud", loud = "quiet" }
+	local VOLUMES = { quiet = 0.3, normal = 1, loud = 2.5 }
+	local fontSets = {}
+	local function fontSet()
+		local set = fontSets[state.font]
+		if not set then
+			set = {}
+			pcall(function()
+				local names = FONT_ENUMS[state.font]
+				set.regular = Font.fromEnum(Enum.Font[names[1]])
+				set.bold = Font.fromEnum(Enum.Font[names[2]])
+				set.italic = Font.new(set.regular.Family, Enum.FontWeight.Regular, Enum.FontStyle.Italic)
+			end)
+			fontSets[state.font] = set
 		end
-		local stroke = button:FindFirstChildOfClass("UIStroke")
-		if stroke then
-			stroke.Transparency = OUTLINES[choice.outline].stroke
-			stroke.Thickness = OUTLINES[choice.outline].thick
+		return set
+	end
+	local function plainName(default)
+		if state.name == "" then
+			return default
 		end
-		button.BackgroundTransparency = button:GetAttribute("Active") and 0 or BUTTON_BG[choice.buttons]
-		if button:GetAttribute("Wide") then
-			button.TextXAlignment = ALIGN[choice.text]
-			local tag = button:FindFirstChild("Tag")
-			if tag then
-				local onLeft = choice.text == "right"
-				tag.AnchorPoint = Vector2.new(onLeft and 0 or 1, 0)
-				tag.Position = UDim2.new(onLeft and 0 or 1, 0, 0, 0)
-				tag.TextXAlignment = onLeft and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
-			end
+		local safe = string.gsub(state.name, "&", "&amp;")
+		safe = string.gsub(safe, "<", "&lt;")
+		safe = string.gsub(safe, ">", "&gt;")
+		return safe
+	end
+	local function currentTheme()
+		local base = BOARDS[state.theme]
+		local color = COLOR_THEMES[state.color]
+		if not color then
+			return base
 		end
+		local merged = {}
+		for key, value in pairs(base) do
+			merged[key] = value
+		end
+		merged.panel = color[1]
+		merged.button = color[2]
+		merged.text = color[3]
+		merged.on = color[4]
+		merged.gradient = color.fade
+		merged.nav = color.nav or color[2]
+		merged.clear = color.clear
+		return merged
+	end
+	local face, boldFace = nil, nil
+	pcall(function()
+		face = Font.fromEnum(Enum.Font.Arial)
+		boldFace = Font.fromEnum(Enum.Font.ArialBold)
+	end)
+	local italicFace = nil
+	pcall(function()
+		italicFace = Font.new(face.Family, Enum.FontWeight.Regular, Enum.FontStyle.Italic)
+	end)
+
+	gui:SetAttribute("StrokeRest", 1)
+	gui:SetAttribute("ButtonStrip", "none")
+	gui:SetAttribute("ButtonBg", 0)
+	gui:SetAttribute("ButtonThick", 1)
+	gui:SetAttribute("ButtonAlign", "center")
+	gui:SetAttribute("ColorButton", BLACK)
+
+	local board = Instance.new("Frame")
+	board.Name = "Board"
+	board.BorderSizePixel = 0
+	board.ZIndex = 1
+	board.Parent = window
+	local boardGradient = Instance.new("UIGradient")
+	boardGradient.Rotation = 90
+	boardGradient.Enabled = false
+	boardGradient.Parent = board
+	local boardStroke = Instance.new("UIStroke")
+	boardStroke.Name = "BoardStroke"
+	boardStroke.Color = Color3.fromRGB(0, 0, 0)
+	boardStroke.Thickness = 2
+	boardStroke.Enabled = false
+	boardStroke.Parent = board
+
+	local function plainLabel(parent, size, color)
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.BorderSizePixel = 0
+		label.Text = ""
+		label.TextColor3 = color
+		label.TextSize = size
+		label.ZIndex = 4
+		label:SetAttribute("KeepColor", true)
+		if boldFace then
+			label.FontFace = boldFace
+		end
+		label.Parent = parent
+		return label
 	end
 
-	local function apply()
-		local card = CARDS[choice.sections]
-		gui:SetAttribute("StrokeRest", OUTLINES[choice.outline].stroke)
-		gui:SetAttribute("ButtonStrip", choice.strip)
-		gui:SetAttribute("ButtonBg", BUTTON_BG[choice.buttons])
-		gui:SetAttribute("ButtonThick", OUTLINES[choice.outline].thick)
-		gui:SetAttribute("ButtonAlign", choice.text)
-
-		local side = choice.tabs
-		local vertical = side == "left" or side == "right"
-		local glass = FILLS[choice.fill]
-		local fill = glass ~= false
-		local scaler = window:FindFirstChildOfClass("UIScale")
-		if scaler then
-			scaler.Scale = SIZES[choice.size]
+	local function paint()
+		local theme = currentTheme()
+		local set = fontSet()
+		local slanted = theme.italic or state.style == "italic"
+		local boldFace = (slanted and (set.italic or italicFace)) or set.bold or boldFace
+		local face = (slanted and (set.italic or italicFace)) or ((theme.bold or state.style == "bold") and boldFace) or set.regular or face
+		window.BackgroundTransparency = 1
+		local windowStroke = window:FindFirstChildOfClass("UIStroke")
+		if windowStroke then
+			windowStroke.Enabled = false
 		end
 		for _, partName in ipairs({ "Stripes", "Shade", "Tint" }) do
 			local part = window:FindFirstChild(partName)
 			if part then
-				part.Visible = fill
-				if partName == "Stripes" then
-					part.BackgroundTransparency = glass or 0
-				elseif partName == "Tint" then
-					part.BackgroundTransparency = (glass and glass > 0) and math.min(1, glass + 0.2) or 0.3
+				part.Visible = false
+			end
+		end
+		local panels = { [board] = true }
+		for _, menu in ipairs(sideMenus) do
+			panels[menu.frame] = true
+			menu.frame.Size = UDim2.fromOffset(menu.frame.Size.X.Offset, board.Size.Y.Offset)
+			menu.frame.BackgroundColor3 = theme.panel
+			menu.frame.BackgroundTransparency = 0
+			for _, partName in ipairs({ "Stripes", "Shade", "Tint" }) do
+				local part = menu.frame:FindFirstChild(partName)
+				if part then
+					part.Visible = false
 				end
 			end
-		end
-		local border = window:FindFirstChildOfClass("UIStroke")
-		if border then
-			border.Enabled = BORDERS[choice.border] > 0
-			border.Thickness = math.max(1, BORDERS[choice.border])
-		end
-		header.BackgroundTransparency = choice["header bar"] == "off" and 1 or (fill and 0.2 or 0)
-		footer.BackgroundTransparency = choice["footer bar"] == "off" and 1 or (fill and 0.3 or 0)
-		tabColumn.BackgroundTransparency = choice["tab bar"] == "off" and 1 or (fill and 0.1 or 0)
-		for section, childName in pairs(HEADER_ITEMS) do
-			local item = header:FindFirstChild(childName)
-			if item then
-				item.Visible = choice[section] == "on"
+			local stroke = menu.frame:FindFirstChildOfClass("UIStroke")
+			if stroke then
+				stroke.Enabled = false
 			end
 		end
-
-		ui.layout.side = side
-		ui.layout.mark = MARKS[choice["tab marker"]]
-		ui.layout.x = side == "left" and TAB_WIDTH or 0
-		ui.layout.y = side == "top" and HEADER_HEIGHT + BAR or HEADER_HEIGHT
-
-		if vertical then
-			tabColumn.Position = side == "left" and UDim2.fromOffset(0, HEADER_HEIGHT) or UDim2.new(1, -TAB_WIDTH, 0, HEADER_HEIGHT)
-			tabColumn.Size = UDim2.new(0, TAB_WIDTH, 1, -(HEADER_HEIGHT + FOOTER_HEIGHT))
-		else
-			tabColumn.Position = side == "top" and UDim2.fromOffset(0, HEADER_HEIGHT) or UDim2.new(0, 0, 1, -(FOOTER_HEIGHT + BAR))
-			tabColumn.Size = UDim2.new(1, 0, 0, BAR)
+		board.BackgroundColor3 = theme.gradient and WHITE_TEXT or theme.panel
+		board.BackgroundTransparency = theme.clear and 1 or (state.transparent and 0.5 or 0)
+		boardGradient.Enabled = theme.gradient ~= nil
+		if theme.gradient then
+			boardGradient.Color = theme.gradient
 		end
-		local divider = tabColumn:FindFirstChild("Divider")
-		if divider then
-			if vertical then
-				divider.Position = side == "left" and UDim2.new(1, -1, 0, 0) or UDim2.new(0, 0, 0, 0)
-				divider.Size = UDim2.new(0, 1, 1, 0)
-			else
-				divider.Position = side == "top" and UDim2.new(0, 0, 1, -1) or UDim2.new(0, 0, 0, 0)
-				divider.Size = UDim2.new(1, 0, 0, 1)
-			end
+		boardStroke.Enabled = state.theme == "genesis" or state.outline or state.rainbowOutline
+		if not state.rainbowOutline then
+			boardStroke.Color = (state.theme == "genesis" and not state.outline) and BLACK or theme.text
 		end
-		local hello = tabColumn:FindFirstChild("Hello")
-		if hello then
-			hello.Visible = vertical and choice.greeting == "on"
-		end
-
-		for _, entry in pairs(pages) do
-			local slot = entry.order - 1
-			if vertical then
-				entry.tab.Position = UDim2.fromOffset(0, 8 + slot * 32)
-				entry.tab.Size = UDim2.fromOffset(TAB_WIDTH - 1, 30)
-			else
-				local step = math.floor((WINDOW_WIDTH - 24) / 7)
-				entry.tab.Position = UDim2.fromOffset(12 + slot * step, 4)
-				entry.tab.Size = UDim2.fromOffset(step - 6, 30)
-			end
-			entry.page.Position = UDim2.fromOffset(ui.layout.x, ui.layout.y)
-			entry.page.Size = UDim2.new(1, vertical and -TAB_WIDTH or 0, 1, -(HEADER_HEIGHT + FOOTER_HEIGHT + STAGE_HEIGHT + (vertical and 0 or BAR)))
-			for _, object in ipairs(entry.page:GetDescendants()) do
-				if object.Name == "Card" then
-					object.BackgroundTransparency = card.bg
-					local stroke = object:FindFirstChildOfClass("UIStroke")
-					if stroke then
-						stroke.Transparency = card.stroke
-					end
-					local edge = object:FindFirstChild("Edge")
-					if edge then
-						edge.Visible = card.line == true
-					end
-				end
-			end
-		end
-
-		tabIndicator.Visible = ui.layout.mark > 0
-		local current = pages[currentTab]
-		if current then
-			local goal = ui.indicatorGoal(current.tab)
-			tabIndicator.Position = goal.Position
-			tabIndicator.Size = goal.Size
-		end
-
+		boardStroke.Thickness = (state.theme == "genesis" and not state.outline and not state.rainbowOutline) and 2 or OUTLINE_SIZES[state.outlineSize]
 		for _, root in ipairs({ gui, tipGui }) do
 			for _, object in ipairs(root:GetDescendants()) do
 				if object:IsA("TextButton") then
-					styleButton(object)
+					if object:GetAttribute("Active") ~= nil then
+						local running = buttonTweens[object]
+						if not (running and running.PlaybackState == Enum.PlaybackState.Playing) then
+							object.BackgroundColor3 = object:GetAttribute("Active") and theme.on or (object:GetAttribute("Nav") and (theme.gradient and WHITE_TEXT or (theme.nav or BLACK)) or theme.button)
+						end
+						if object:GetAttribute("Nav") then
+							local shade = object:FindFirstChildOfClass("UIGradient")
+							if shade then
+								shade.Color = theme.gradient or PLAIN_SHADE
+							end
+						end
+						object.BackgroundTransparency = (state.faded and not object:GetAttribute("Active")) and 0.45 or 0
+						local stroke = object:FindFirstChildOfClass("UIStroke")
+						if stroke then
+							stroke.Transparency = 1
+						end
+					else
+						object.BackgroundColor3 = theme.button
+					end
+					object.TextColor3 = theme.text
+					object.TextStrokeColor3 = BLACK
+					object.TextStrokeTransparency = state.textOutline and 0 or 1
+					if face then
+						object.FontFace = face
+					end
+				elseif object:IsA("TextBox") then
+					object.BackgroundColor3 = theme.button
+					object.TextColor3 = theme.text
+					object.PlaceholderColor3 = theme.text
+					if face then
+						object.FontFace = face
+					end
+				elseif object:IsA("TextLabel") then
+					if not object:GetAttribute("KeepColor") then
+						object.TextColor3 = WHITE_TEXT
+					end
+					if boldFace then
+						object.FontFace = boldFace
+					end
+				elseif object:IsA("UIStroke") then
+					if object ~= boardStroke then
+						object.Color = WHITE_TEXT
+					end
+				elseif object:IsA("ScrollingFrame") then
+					object.ScrollBarImageColor3 = WHITE_TEXT
+				elseif object.ClassName == "Frame" and not panels[object] and object.BackgroundTransparency < 1 then
+					if object:FindFirstChildOfClass("UIGradient") then
+						object.BackgroundTransparency = 1
+					elseif object:FindFirstChildWhichIsA("TextLabel", true) or object:FindFirstChildWhichIsA("TextButton", true) then
+						object.BackgroundColor3 = BLACK
+					else
+						object.BackgroundTransparency = 1
+					end
 				end
 			end
 		end
+	end
 
-		for section, buttons in pairs(optionButtons) do
-			for name, button in pairs(buttons) do
-				setButtonActive(button, choice[section] == name)
+	header.BackgroundTransparency = 1
+	header.Position = UDim2.fromOffset(0, 0)
+	header.Parent = board
+	footer.Visible = false
+	tabColumn.Visible = false
+	tabIndicator.Visible = false
+	closeButton.Visible = false
+	minimizeButton.Visible = false
+	for _, tip in ipairs(tipGui:GetChildren()) do
+		if tip:IsA("GuiObject") then
+			tip.Visible = false
+			tip:GetPropertyChangedSignal("Visible"):Connect(function()
+				if tip.Visible then
+					tip.Visible = false
+				end
+			end)
+		end
+	end
+	for _, child in ipairs(header:GetChildren()) do
+		if child:IsA("GuiObject") and child.Name ~= "Title" then
+			child.Visible = false
+		end
+	end
+	local title = header:FindFirstChild("Title")
+	if title then
+		title.Visible = true
+		title.Position = UDim2.fromOffset(6, 2)
+		title.Size = UDim2.new(1, -12, 1, -4)
+		title.TextWrapped = true
+		title.RichText = true
+		title.TextXAlignment = Enum.TextXAlignment.Center
+		title.TextYAlignment = Enum.TextYAlignment.Center
+	end
+
+	for _, doomed in ipairs({ ui.themeMenuButton, ui.backgroundMenuButton, ui.clickMenuButton, ui.trailMenuButton, ui.resetPosButton, ui.autoSaveModsButton }) do
+		doomed:Destroy()
+	end
+	audioLevels.applyTheme = function() end
+	audioLevels.setBackground = function() end
+	audioLevels.setTrail = function() end
+	audioLevels.setEffect = function() end
+
+	local holder = Instance.new("Frame")
+	holder.Name = "OldPages"
+	holder.Visible = false
+	holder.BackgroundTransparency = 1
+	holder.Parent = window
+
+	local list = Instance.new("Frame")
+	list.Name = "List"
+	list.BackgroundTransparency = 1
+	list.BorderSizePixel = 0
+	list.ClipsDescendants = true
+	list.ZIndex = 2
+	list.Parent = board
+
+	local function navButton()
+		local button = makeButton(window, "", 0, 0, BAR_W)
+		button.Text = ""
+		button.ZIndex = 5
+		button:SetAttribute("Nav", true)
+		return button
+	end
+	local prevButton = navButton()
+	local nextButton = navButton()
+
+	local pageLabel = plainLabel(window, 17, YELLOW_TEXT)
+	local fpsTop = plainLabel(window, 17, YELLOW_TEXT)
+	local credit = plainLabel(window, 24, Color3.fromRGB(255, 30, 30))
+	credit.Text = "By Dawg"
+	local versionLabel = plainLabel(window, 17, Color3.fromRGB(255, 30, 30))
+	versionLabel.Text = VERSION
+	local bottom = plainLabel(board, 11, WHITE_TEXT)
+	bottom.TextWrapped = true
+
+	local searchBox = makeBox(board, "search...", 20, 50, PANEL_W - 40)
+	searchBox.Size = UDim2.fromOffset(PANEL_W - 40, 26)
+	searchBox.ZIndex = 4
+	searchBox.Visible = false
+
+	local items = { mods = {}, misc = {}, music = {} }
+	local placeholders = 0
+	local known = {}
+	local view = "home"
+	local pageIndex = { home = 1, misc = 1, music = 1 }
+	local SECTION_HINTS = { player = "player modifications", other = "other stuff", esp = "see stuff through walls", teleports = "teleport to stuff in the map", destroy = "destroy stuff", server = "go to different games" }
+	local function navMode()
+		return state.nav
+	end
+	local pending = false
+	local vaultSub = nil
+	local layout
+
+	local function queueLayout()
+		if pending then
+			return
+		end
+		pending = true
+		task.defer(function()
+			pending = false
+			layout()
+		end)
+	end
+
+	local function shortText(text)
+		local value = string.lower(text)
+		value = string.gsub(value, "^this will ", "")
+		value = string.gsub(value, "%.$", "")
+		return value
+	end
+
+	local function adopt(child, group, hint)
+		if known[child] or not (child:IsA("TextButton") or child:IsA("TextBox") or child:IsA("TextLabel")) then
+			return
+		end
+		known[child] = true
+		local tag = child:FindFirstChild("Tag")
+		if tag then
+			tag:Destroy()
+		end
+		child.Position = UDim2.fromOffset(0, -4000)
+		child.Parent = list
+		items[group] = items[group] or {}
+		table.insert(items[group], child)
+		child:GetPropertyChangedSignal("Visible"):Connect(queueLayout)
+		child.AncestryChanged:Connect(queueLayout)
+		if child:IsA("TextButton") then
+			local sub = plainLabel(child, 10, WHITE_TEXT)
+			sub.Name = "Sub"
+			sub.Position = UDim2.new(0, 0, 1, 0)
+			sub.Size = UDim2.new(1, 0, 0, 11)
+			sub.TextScaled = true
+			sub.Text = string.sub(group, 1, 8) == "section:" and shortText(hint or DESCRIPTIONS[string.lower(child.Text)] or "") or ""
+			sub:SetAttribute("Base", sub.Text)
+			local cap = Instance.new("UITextSizeConstraint")
+			cap.MaxTextSize = 10
+			cap.Parent = sub
+			if string.lower(child.Text) == "tp to vault" then
+				vaultSub = sub
 			end
 		end
 	end
 
-	local function setOption(section, name)
-		for _, candidate in ipairs(OPTIONS[section] or {}) do
-			if candidate == name then
-				choice[section] = name
-				return true
-			end
-		end
-		return false
-	end
+	local panicButton = makeButton(list, "panic [turns off all mods]", 0, 0, PANEL_W - 40)
+	local settingsButton = makeButton(list, "settings", 0, 0, PANEL_W - 40)
+	adopt(settingsButton, "home", "")
+	local exitButton = makeButton(list, "exit settings", 0, 0, PANEL_W - 40)
+	adopt(exitButton, "misc", "goes back to the home page")
+	local menuSettingsButton = makeButton(list, "menu settings", 0, 0, PANEL_W - 40)
+	adopt(menuSettingsButton, "misc", "opens the menu settings")
+	local musicButton = makeButton(list, "music menu", 0, 0, PANEL_W - 40)
+	adopt(musicButton, "misc", "opens the music menu")
+	local destroyButton = makeButton(list, "destroy menu", 0, 0, PANEL_W - 40)
+	adopt(destroyButton, "misc", "removes the whole menu")
 
-	audioLevels.setMenuType = function(text)
-		local changed = false
-		for section, name in string.gmatch(text, "([^|=]+)=([^|=]+)") do
-			if setOption(section, name) then
-				changed = true
-			end
+	do
+		local ordered = {}
+		for pageName, entry in pairs(pages) do
+			table.insert(ordered, { name = pageName, entry = entry })
 		end
-		if changed then
-			apply()
-		end
-	end
-	audioLevels.getMenuType = function()
-		local parts = {}
-		for index, section in ipairs(DISPLAY) do
-			parts[index] = section .. "=" .. choice[section]
-		end
-		return table.concat(parts, "|")
-	end
-
-	local typeMenu = createSideMenu({ title = "menu types", custom = true })
-	typeMenu.build = function()
-		local order = 0
-		for _, section in ipairs(DISPLAY) do
-			order = order + 1
-			local heading = makeNote(typeMenu.scroll, section, 0, 0)
-			heading.Size = UDim2.new(1, 0, 0, 18)
-			heading.LayoutOrder = order
-			optionButtons[section] = {}
-			for _, name in ipairs(OPTIONS[section]) do
-				order = order + 1
-				local button = makeButton(typeMenu.scroll, name, 0, 0)
-				button.Size = UDim2.new(1, 0, 0, 28)
-				button.LayoutOrder = order
-				button.MouseButton1Click:Connect(function()
-					if setOption(section, name) then
-						apply()
-					end
+		table.sort(ordered, function(a, b)
+			return a.entry.order < b.entry.order
+		end)
+		for _, info in ipairs(ordered) do
+			local isMisc = string.lower(info.name) == "misc"
+			local section = "section:" .. info.name
+			if not isMisc then
+				local key = string.lower(info.name)
+				local openButton = makeButton(list, key, 0, 0, PANEL_W - 40)
+				adopt(openButton, "home", "")
+				local backButton = makeButton(list, "back", 0, 0, PANEL_W - 40)
+				adopt(backButton, section, "")
+				openButton.MouseButton1Click:Connect(function()
+					view = section
+					pageIndex[section] = 1
+					layout()
 				end)
-				optionButtons[section][name] = button
-				setButtonActive(button, choice[section] == name)
+				backButton.MouseButton1Click:Connect(function()
+					view = "home"
+					layout()
+				end)
+			end
+			for _, card in ipairs(info.entry.page:GetDescendants()) do
+				if card.Name == "Card" then
+					local children = {}
+					for _, child in ipairs(card:GetChildren()) do
+						if child:IsA("TextButton") or child:IsA("TextBox") or child:IsA("TextLabel") then
+							table.insert(children, child)
+						end
+					end
+					table.sort(children, function(a, b)
+						if a.Position.Y.Offset ~= b.Position.Y.Offset then
+							return a.Position.Y.Offset < b.Position.Y.Offset
+						end
+						return a.Position.X.Offset < b.Position.X.Offset
+					end)
+					for _, child in ipairs(children) do
+						if child:IsA("TextBox") and string.lower(child.PlaceholderText) == "change jump power" then
+							child:Destroy()
+						elseif not isMisc then
+							if child:IsA("TextButton") and string.match(child.Text, "^button %d+$") then
+								placeholders = placeholders + 1
+								child.Text = "button " .. placeholders
+								adopt(child, section, "description")
+							else
+								adopt(child, section)
+							end
+						elseif child == ui.musicMenuButton then
+							child:Destroy()
+						elseif child == ui.autoSaveThemeButton then
+							child.Parent = holder
+						else
+							child:Destroy()
+						end
+					end
+					if not isMisc then
+						card.ChildAdded:Connect(function(child)
+							task.defer(function()
+								if child.Parent == card then
+									adopt(child, section)
+									queueLayout()
+								end
+							end)
+						end)
+					end
+				end
+			end
+			info.entry.page.Parent = holder
+			info.entry.tab.Visible = false
+		end
+	end
+
+	local exitMusicButton = makeButton(list, "exit music", 0, 0, PANEL_W - 40)
+	adopt(exitMusicButton, "music", "goes back to the settings")
+	if ui.musicScroll then
+		local children = {}
+		for _, child in ipairs(ui.musicScroll:GetChildren()) do
+			if child:IsA("GuiObject") then
+				table.insert(children, child)
+			end
+		end
+		table.sort(children, function(a, b)
+			return a.LayoutOrder < b.LayoutOrder
+		end)
+		for _, child in ipairs(children) do
+			local target = child
+			if child:IsA("Frame") then
+				target = child:FindFirstChildWhichIsA("TextButton", true)
+			end
+			if target and (target:IsA("TextButton") or target:IsA("TextBox")) then
+				adopt(target, "music")
 			end
 		end
 	end
-	ui.menuTypesButton.MouseButton1Click:Connect(typeMenu.open)
+	local menuBackButton = makeButton(list, "back", 0, 0, PANEL_W - 40)
+	adopt(menuBackButton, "menu", "")
+	adopt(ui.autoSaveThemeButton, "menu", "")
+	adopt(panicButton, "menu", "")
+	local themeButton = makeButton(list, "theme changer", 0, 0, PANEL_W - 40)
+	adopt(themeButton, "menu", "changes the theme of the menu")
+	local navTypeButton = makeButton(list, "page buttons", 0, 0, PANEL_W - 40)
+	adopt(navTypeButton, "menu", "changes where the page buttons are")
+	local subsButton = makeButton(list, "descriptions", 0, 0, PANEL_W - 40)
+	adopt(subsButton, "menu", "shows or hides the text under the buttons")
+	local wideButton = makeButton(list, "wide menu", 0, 0, PANEL_W - 40)
+	adopt(wideButton, "menu", "makes the menu wider")
+	local colorButton = makeButton(list, "change theme color", 0, 0, PANEL_W - 40)
+	adopt(colorButton, "menu", "changes the colors of the menu")
+	local fontButton = makeButton(list, "change font type", 0, 0, PANEL_W - 40)
+	adopt(fontButton, "menu", "changes the font of the menu")
+	local toggles = {}
+	local changed
+	local function addToggle(key, label, hint)
+		local button = makeButton(list, label, 0, 0, PANEL_W - 40)
+		adopt(button, "menu", hint)
+		toggles[key] = { button = button, label = label }
+		button.MouseButton1Click:Connect(function()
+			state[key] = not state[key]
+			changed()
+		end)
+	end
+	addToggle("transparent", "transparent menu", "makes the menu see through")
+	addToggle("outline", "outline menu", "puts an outline around the menu")
+	addToggle("animTitle", "animated title", "makes the title fade in and out")
+	addToggle("noTitle", "disable menu title", "hides the title")
+	addToggle("noFps", "disable fps counter", "hides the fps")
+	addToggle("sounds", "button sounds", "plays a sound when you click a button")
+	local volumeButton = makeButton(list, "change button volume", 0, 0, PANEL_W - 40)
+	adopt(volumeButton, "menu", "changes how loud the button sound is")
+	local scaleButton = makeButton(list, "change menu scale", 0, 0, PANEL_W - 40)
+	adopt(scaleButton, "menu", "changes how big the menu is")
+	local styleButton = makeButton(list, "change font style", 0, 0, PANEL_W - 40)
+	adopt(styleButton, "menu", "changes the style of the text")
+	addToggle("noBrackets", "hide brackets", "hides the brackets on the buttons")
+	local sizeButton = makeButton(list, "change text size", 0, 0, PANEL_W - 40)
+	adopt(sizeButton, "menu", "changes how big the button text is")
+	addToggle("faded", "faded buttons", "makes the buttons see through")
+	addToggle("slim", "slim buttons", "makes the buttons shorter")
+	local outlineSizeButton = makeButton(list, "change outline size", 0, 0, PANEL_W - 40)
+	adopt(outlineSizeButton, "menu", "changes how thick the outline is")
+	local titlePosButton = makeButton(list, "change title position", 0, 0, PANEL_W - 40)
+	adopt(titlePosButton, "menu", "moves the title left, center or right")
+	local titleSizeButton = makeButton(list, "change title size", 0, 0, PANEL_W - 40)
+	adopt(titleSizeButton, "menu", "changes how big the title is")
+	addToggle("rainbowTitle", "rainbow title", "makes the title change colors")
+	addToggle("noCredit", "disable credit", "hides the text under the menu")
+	addToggle("lock", "lock menu position", "stops the menu from being dragged")
+	local resetButton = makeButton(list, "reset menu position", 0, 0, PANEL_W - 40)
+	adopt(resetButton, "menu", "moves the menu back to the middle")
+	local nameBox = makeBox(list, "custom menu name", 0, 0, PANEL_W - 40)
+	adopt(nameBox, "menu")
+	destroyButton.MouseButton1Click:Connect(function()
+		ui.destroyMenu()
+	end)
+
+	local function refreshVault()
+		local code = vaultLabel.Text
+		if vaultSub then
+			local digits = string.match(code, "[%w]+%s*$") or ""
+			vaultSub.Text = code ~= "" and string.lower(code) or vaultSub:GetAttribute("Base")
+			vaultSub.Parent.Text = (code ~= "" and not state.subs) and ("tp to vault [" .. string.gsub(digits, "%s+$", "") .. "]") or "tp to vault"
+		end
+	end
+	vaultLabel:GetPropertyChangedSignal("Text"):Connect(refreshVault)
+
+	local pageNumber = 1
+	local pageCount = 1
+	local function refreshTitle()
+		local fpsLabel = header:FindFirstChild("Fps")
+		local fps = fpsLabel and string.match(fpsLabel.Text, "%d+") or "0"
+		if state.theme == "dark" then
+			if title then
+				title.Text = plainName(DARK_TITLE) .. '\n<font color="#ffe600">' .. VERSION .. "</font>"
+			end
+			pageLabel.Text = "PAGE " .. pageNumber
+			fpsTop.Text = "FPS [ " .. fps .. " ]"
+		elseif state.theme == "rexon" then
+			if title then
+				title.Text = "<b><i>" .. plainName(REXON_TITLE) .. " [Page " .. pageNumber .. "/" .. pageCount .. "]</i></b>"
+			end
+		elseif state.theme == "ii stupid" then
+			if title then
+				title.Text = '<font color="#ffc88c">' .. plainName(STUPID_TITLE) .. ' <font color="#c8a078">[</font><font color="#ffffff">' .. pageNumber .. '</font><font color="#c8a078">]</font>' .. (state.noFps and "" or ('\n<font size="12">FPS: ' .. fps .. "</font>")) .. "</font>"
+			end
+		elseif state.theme == "genesis" then
+			if title then
+				title.Text = plainName(GENESIS_TITLE) .. (state.noFps and "" or ('\n<font size="12">Fps: ' .. fps .. "</font>"))
+			end
+		elseif title then
+			title.Text = plainName(GOLD_TITLE) .. (state.noFps and "" or (" - Fps: " .. fps)) .. " : Page: " .. pageNumber
+		end
+	end
+
+	local function arrange()
+		local theme = currentTheme()
+		local PANEL_W = state.wide and 430 or PANEL_W
+		local WIDTH = PANEL_W + (BAR_W + GAP) * 2
+		gui:SetAttribute("ColorButton", theme.gradient and WHITE_TEXT or (theme.nav or BLACK))
+		searchBox.Size = UDim2.fromOffset(PANEL_W - 40, 26)
+		local panelH = theme.head + theme.rows * theme.pitch + theme.tail
+		local height = TOP + panelH + FOOT
+		local left = BAR_W + GAP
+		gui:SetAttribute("ColorBg", theme.panel)
+		gui:SetAttribute("ColorText", theme.text)
+		gui:SetAttribute("ColorOn", theme.on)
+		gui:SetAttribute("ColorOff", theme.button)
+		ui.size.w = WIDTH
+		ui.size.h = height
+		ui.sideOffsetY = TOP
+		window.Size = UDim2.fromOffset(WIDTH, height)
+		board.Position = UDim2.fromOffset(left, TOP)
+		board.Size = UDim2.fromOffset(PANEL_W, panelH)
+		header.Size = UDim2.new(1, 0, 0, 50)
+		local subs = state.subs
+		if title then
+			title.TextSize = (state.theme == "gold" and 14 or 17) + SIZE_OFFSET[state.titleSize] * 0.75
+		end
+		searchBox.Visible = theme.search == true
+		if not theme.search and searchBox.Text ~= "" then
+			searchBox.Text = ""
+		end
+		local rowsMode = navMode() == "rows"
+		local perPage = theme.rows - (rowsMode and 2 or 0)
+		local rowHeight = state.slim and 22 or theme.height
+		local inset = math.floor((theme.pitch - rowHeight) / 2)
+		list.Position = UDim2.fromOffset(20, theme.head + (rowsMode and theme.pitch * 2 or 0))
+		list.Size = UDim2.fromOffset(PANEL_W - 40, perPage * theme.pitch)
+		local stacked = theme.arrows and navMode() == "sides"
+		prevButton.Text = rowsMode and "<" or (stacked and "<\n<\n<\n<\n<\n<" or "")
+		nextButton.Text = rowsMode and ">" or (stacked and ">\n>\n>\n>\n>\n>" or "")
+		if title then
+			title.TextXAlignment = POS_ALIGN[state.titlePos] or (state.theme == "rexon" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center)
+		end
+		for _, nav in ipairs({ prevButton, nextButton }) do
+			local pad = nav:FindFirstChildOfClass("UIPadding")
+			if pad then
+				pad.PaddingTop = UDim.new(0, 2)
+				pad.PaddingBottom = UDim.new(0, 2)
+			end
+			local limit = nav:FindFirstChildOfClass("UITextSizeConstraint")
+			if limit then
+				limit.MaxTextSize = 22
+			end
+		end
+		if rowsMode then
+			prevButton.Position = UDim2.fromOffset(left + 20, TOP + theme.head + inset)
+			prevButton.Size = UDim2.fromOffset(PANEL_W - 40, rowHeight)
+			nextButton.Position = UDim2.fromOffset(left + 20, TOP + theme.head + theme.pitch + inset)
+			nextButton.Size = UDim2.fromOffset(PANEL_W - 40, rowHeight)
+		elseif navMode() == "top" then
+			prevButton.Position = UDim2.fromOffset(left - 8, TOP - 16)
+			prevButton.Size = UDim2.fromOffset(70, 26)
+			nextButton.Position = UDim2.fromOffset(left + PANEL_W - 62, TOP - 16)
+			nextButton.Size = UDim2.fromOffset(70, 26)
+		else
+			local barScale = theme.bars or 0.82
+			local barTop = TOP + math.floor(panelH * (1 - barScale) / 2)
+			prevButton.Position = UDim2.fromOffset(0, barTop)
+			prevButton.Size = UDim2.fromOffset(BAR_W, math.floor(panelH * barScale))
+			nextButton.Position = UDim2.fromOffset(WIDTH - BAR_W, barTop)
+			nextButton.Size = UDim2.fromOffset(BAR_W, math.floor(panelH * barScale))
+		end
+		if state.flip then
+			local position, size, text = prevButton.Position, prevButton.Size, prevButton.Text
+			prevButton.Position, prevButton.Size, prevButton.Text = nextButton.Position, nextButton.Size, nextButton.Text
+			nextButton.Position, nextButton.Size, nextButton.Text = position, size, text
+		end
+		pageLabel.Visible = state.theme == "dark"
+		fpsTop.Visible = state.theme == "dark" and not state.noFps
+		if title then
+			title.Visible = not state.noTitle
+		end
+		gui:SetAttribute("ClickVolume", state.sounds and VOLUMES[state.volume] or 0)
+		local clickSound = gui:FindFirstChild("ClickSound")
+		if clickSound then
+			clickSound.Volume = state.sounds and VOLUMES[state.volume] or 0
+		end
+		pageLabel.Position = UDim2.fromOffset(left + 70, 0)
+		pageLabel.Size = UDim2.fromOffset(PANEL_W - 140, 16)
+		fpsTop.Position = UDim2.fromOffset(left + 70, 15)
+		fpsTop.Size = UDim2.fromOffset(PANEL_W - 140, 16)
+		credit.Position = UDim2.fromOffset(left, TOP + panelH + 2)
+		credit.Size = UDim2.fromOffset(PANEL_W, 26)
+		versionLabel.Position = UDim2.fromOffset(left, TOP + panelH + 28)
+		versionLabel.Size = UDim2.fromOffset(PANEL_W, 20)
+		bottom.Visible = false
+		bottom.Position = UDim2.fromOffset(8, theme.head + theme.rows * theme.pitch)
+		bottom.Size = UDim2.fromOffset(PANEL_W - 16, theme.tail - 2)
+		for _, groupItems in pairs(items) do
+			for _, child in ipairs(groupItems) do
+				if child.Parent == list then
+					child.Size = UDim2.new(1, 0, 0, rowHeight)
+					if child:IsA("TextButton") then
+						local pad = child:FindFirstChildOfClass("UIPadding")
+						if pad then
+							local label = child:FindFirstChild("Sub")
+							local lifted = subs and label ~= nil and label.Text ~= ""
+							pad.PaddingTop = UDim.new(0, lifted and 1 or 3)
+							pad.PaddingBottom = UDim.new(0, lifted and 11 or 3)
+							pad.PaddingLeft = UDim.new(0, 6)
+							pad.PaddingRight = UDim.new(0, 6)
+						end
+						local limit = child:FindFirstChildOfClass("UITextSizeConstraint")
+						if limit then
+							limit.MaxTextSize = theme.textSize + SIZE_OFFSET[state.textSize]
+						end
+						local sub = child:FindFirstChild("Sub")
+						if sub then
+							sub.Visible = subs
+						end
+					end
+				end
+			end
+		end
+		themeButton.Text = show("theme changer", state.theme)
+		navTypeButton.Text = show("page buttons", state.nav)
+		subsButton.Text = show("descriptions", state.subs and "on" or "off")
+		wideButton.Text = show("wide menu", state.wide and "on" or "off")
+		colorButton.Text = show("change theme color", state.color)
+		fontButton.Text = show("change font type", state.font)
+		volumeButton.Text = show("change button volume", state.volume)
+		scaleButton.Text = show("change menu scale", state.scale)
+		sizeButton.Text = show("change text size", state.textSize)
+		outlineSizeButton.Text = show("change outline size", state.outlineSize)
+		titlePosButton.Text = show("change title position", state.titlePos)
+		titleSizeButton.Text = show("change title size", state.titleSize)
+		window.Draggable = not state.lock
+		credit.Visible = not state.noCredit
+		versionLabel.Visible = not state.noCredit
+		gui:SetAttribute("ButtonBg", state.faded and 0.45 or 0)
+		styleButton.Text = show("change font style", state.style)
+		panicButton.Text = state.noBrackets and "panic" or "panic [turns off all mods]"
+		for key, entry in pairs(toggles) do
+			entry.button.Text = show(entry.label, state[key] and "on" or "off")
+		end
+		local scaler = window:FindFirstChildOfClass("UIScale")
+		if scaler then
+			scaler.Scale = SCALES[state.scale]
+		end
+	end
+
+	function layout()
+		local theme = currentTheme()
+		local shown = {}
+		local query = theme.search and string.lower(searchBox.Text) or ""
+		for group, groupItems in pairs(items) do
+			for _, child in ipairs(groupItems) do
+				if child.Parent == list then
+					local name = child:IsA("TextBox") and child.PlaceholderText or child.Text
+					if group == view and child.Visible and (query == "" or string.find(string.lower(name), query, 1, true)) then
+						table.insert(shown, child)
+					else
+						child.Position = UDim2.fromOffset(0, -4000)
+					end
+				end
+			end
+		end
+		if state.alpha then
+			local keys = {}
+			for _, child in ipairs(shown) do
+				keys[child] = string.lower(child:IsA("TextBox") and child.PlaceholderText or child.Text)
+			end
+			table.sort(shown, function(a, b)
+				return keys[a] < keys[b]
+			end)
+		end
+		local perPage = theme.rows - (navMode() == "rows" and 2 or 0)
+		local count = math.max(1, math.ceil(#shown / perPage))
+		pageIndex[view] = ((pageIndex[view] or 1) - 1) % count + 1
+		pageNumber = pageIndex[view]
+		pageCount = count
+		local first = (pageNumber - 1) * perPage + 1
+		for index, child in ipairs(shown) do
+			if index >= first and index < first + perPage then
+				child.Position = UDim2.fromOffset(0, (index - first) * theme.pitch + math.floor((theme.pitch - (state.slim and 22 or theme.height)) / 2))
+			else
+				child.Position = UDim2.fromOffset(0, -4000)
+			end
+		end
+		refreshTitle()
+	end
+
+	local function applyAll()
+		arrange()
+		layout()
+		refreshVault()
+		paint()
+	end
+	function changed()
+		applyAll()
+		if saveSettings then
+			pcall(saveSettings)
+		end
+	end
+
+	audioLevels.getBoard = function()
+		local out = {}
+		for key, value in pairs(state) do
+			out[key] = value
+		end
+		out.rapid = false
+		return out
+	end
+	audioLevels.setBoard = function(data)
+		if BOARDS[data.theme] then
+			state.theme = data.theme
+		end
+		if NAV_CYCLE[data.nav] then
+			state.nav = data.nav
+		end
+		if type(data.subs) == "boolean" then
+			state.subs = data.subs
+		end
+		if type(data.wide) == "boolean" then
+			state.wide = data.wide
+		end
+		if data.color == "default" or COLOR_THEMES[data.color] then
+			state.color = data.color
+		end
+		if FONT_ENUMS[data.font] then
+			state.font = data.font
+		end
+		if VOLUMES[data.volume] then
+			state.volume = data.volume
+		end
+		if SCALES[data.scale] then
+			state.scale = data.scale
+		end
+		if STYLE_CYCLE[data.style] then
+			state.style = data.style
+		end
+		if SIZE_CYCLE[data.textSize] then
+			state.textSize = data.textSize
+		end
+		if SIZE_CYCLE[data.titleSize] then
+			state.titleSize = data.titleSize
+		end
+		if OUTLINE_CYCLE[data.outlineSize] then
+			state.outlineSize = data.outlineSize
+		end
+		if POS_CYCLE[data.titlePos] then
+			state.titlePos = data.titlePos
+		end
+		state.textOutline = false
+		state.alpha = false
+		state.flip = false
+		state.rainbowOutline = false
+		state.showTime = false
+		state.noToasts = false
+		if type(data.name) == "string" then
+			state.name = string.sub(data.name, 1, 40)
+		end
+		for key in pairs(toggles) do
+			if type(data[key]) == "boolean" then
+				state[key] = data[key]
+			end
+		end
+		applyAll()
+	end
+
+	prevButton.MouseButton1Click:Connect(function()
+		pageIndex[view] = (pageIndex[view] or 1) - 1
+		layout()
+	end)
+	nextButton.MouseButton1Click:Connect(function()
+		pageIndex[view] = (pageIndex[view] or 1) + 1
+		layout()
+	end)
+	settingsButton.MouseButton1Click:Connect(function()
+		view = "misc"
+		pageIndex.misc = 1
+		layout()
+	end)
+	exitButton.MouseButton1Click:Connect(function()
+		view = "home"
+		layout()
+	end)
+	menuSettingsButton.MouseButton1Click:Connect(function()
+		view = "menu"
+		pageIndex.menu = 1
+		layout()
+	end)
+	menuBackButton.MouseButton1Click:Connect(function()
+		view = "misc"
+		layout()
+	end)
+	themeButton.MouseButton1Click:Connect(function()
+		state.theme = THEME_CYCLE[state.theme] or "dark"
+		local preset = THEME_PRESETS[state.theme]
+		state.nav = preset.nav
+		state.wide = preset.wide
+		state.subs = preset.subs
+		state.color = "default"
+		state.font = "arial"
+		state.style = "normal"
+		state.textSize = "normal"
+		state.titlePos = "default"
+		state.titleSize = "normal"
+		state.outlineSize = "normal"
+		for _, key in ipairs({ "transparent", "outline", "animTitle", "noTitle", "noFps", "noBrackets", "faded", "slim", "rainbowTitle", "noCredit", "rapid" }) do
+			state[key] = false
+		end
+		changed()
+	end)
+	searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		pageIndex[view] = 1
+		queueLayout()
+	end)
+	navTypeButton.MouseButton1Click:Connect(function()
+		state.nav = NAV_CYCLE[state.nav] or "top"
+		changed()
+	end)
+	subsButton.MouseButton1Click:Connect(function()
+		state.subs = not state.subs
+		changed()
+	end)
+	wideButton.MouseButton1Click:Connect(function()
+		state.wide = not state.wide
+		changed()
+	end)
+	fontButton.MouseButton1Click:Connect(function()
+		local index = 1
+		for position, name in ipairs(FONT_ORDER) do
+			if name == state.font then
+				index = position
+			end
+		end
+		state.font = FONT_ORDER[index % #FONT_ORDER + 1]
+		changed()
+	end)
+	volumeButton.MouseButton1Click:Connect(function()
+		state.volume = VOLUME_CYCLE[state.volume] or "normal"
+		changed()
+	end)
+	scaleButton.MouseButton1Click:Connect(function()
+		state.scale = SCALE_CYCLE[state.scale] or "normal"
+		changed()
+	end)
+	styleButton.MouseButton1Click:Connect(function()
+		state.style = STYLE_CYCLE[state.style] or "normal"
+		changed()
+	end)
+	sizeButton.MouseButton1Click:Connect(function()
+		state.textSize = SIZE_CYCLE[state.textSize] or "normal"
+		changed()
+	end)
+	outlineSizeButton.MouseButton1Click:Connect(function()
+		state.outlineSize = OUTLINE_CYCLE[state.outlineSize] or "normal"
+		changed()
+	end)
+	titlePosButton.MouseButton1Click:Connect(function()
+		state.titlePos = POS_CYCLE[state.titlePos] or "default"
+		changed()
+	end)
+	titleSizeButton.MouseButton1Click:Connect(function()
+		state.titleSize = SIZE_CYCLE[state.titleSize] or "normal"
+		changed()
+	end)
+	resetButton.MouseButton1Click:Connect(function()
+		window.Position = UDim2.new(0.5, -math.floor(ui.size.w / 2), 0.5, -math.floor(ui.size.h / 2))
+		if saveSettings then
+			pcall(saveSettings)
+		end
+	end)
+	musicButton.MouseButton1Click:Connect(function()
+		view = "music"
+		pageIndex.music = 1
+		arrange()
+		layout()
+	end)
+	exitMusicButton.MouseButton1Click:Connect(function()
+		view = "misc"
+		arrange()
+		layout()
+	end)
+	nameBox.FocusLost:Connect(function()
+		state.name = string.sub(nameBox.Text, 1, 40)
+		changed()
+	end)
+	colorButton.MouseButton1Click:Connect(function()
+		local index = 1
+		for position, name in ipairs(COLOR_ORDER) do
+			if name == state.color then
+				index = position
+			end
+		end
+		state.color = COLOR_ORDER[index % #COLOR_ORDER + 1]
+		changed()
+	end)
+	panicButton.MouseButton1Click:Connect(function()
+		if ui.panic then
+			ui.panic()
+		end
+		for group, groupItems in pairs(items) do
+			if string.sub(group, 1, 8) == "section:" then
+				for _, child in ipairs(groupItems) do
+					if child.Parent == list and child:IsA("TextButton") and child:GetAttribute("Active") then
+						setButtonActive(child, false)
+					end
+				end
+			end
+		end
+	end)
+
+	for _, root in ipairs({ gui, tipGui }) do
+		for _, object in ipairs(root:GetDescendants()) do
+			if object:IsA("TextButton") then
+				local strip = object:FindFirstChild("Strip")
+				if strip then
+					strip.Visible = false
+					object.TextXAlignment = Enum.TextXAlignment.Center
+				end
+			elseif object.Name == "Tag" then
+				object.Visible = false
+			end
+		end
+	end
+
+	applyAll()
+	local dirty = false
+	gui.DescendantAdded:Connect(function()
+		if dirty then
+			return
+		end
+		dirty = true
+		task.delay(0.1, function()
+			dirty = false
+			paint()
+		end)
+	end)
+	task.spawn(function()
+		local elapsed, ticks = 0, 0
+		while gui.Parent do
+			task.wait(0.15)
+			elapsed = elapsed + 0.15
+			ticks = ticks + 1
+			local color = COLOR_THEMES[state.color]
+			if color and color.anim then
+				local hue = (os.clock() * 0.1) % 1
+				color[1] = color.anim == "pastel" and Color3.fromHSV(hue, 0.35, 1) or Color3.fromHSV(hue, 0.9, 0.9)
+				board.BackgroundColor3 = color[1]
+				for _, menu in ipairs(sideMenus) do
+					menu.frame.BackgroundColor3 = color[1]
+				end
+			end
+			if title then
+				title.TextTransparency = state.animTitle and (0.35 + 0.35 * math.sin(os.clock() * 4)) or 0
+				if state.rainbowTitle then
+					title.TextColor3 = Color3.fromHSV((os.clock() * 0.25) % 1, 0.8, 1)
+				end
+			end
+			if state.rainbowOutline then
+				boardStroke.Color = Color3.fromHSV((os.clock() * 0.2) % 1, 0.9, 1)
+			end
+			if ticks % 3 == 0 then
+				credit.Text = state.showTime and ("By Dawg - " .. string.gsub(os.date("%I:%M %p"), "^0", "")) or "By Dawg"
+			end
+			if ticks % 3 == 0 then
+				refreshTitle()
+			end
+			if elapsed >= 1.5 then
+				elapsed = 0
+				paint()
+			end
+		end
+	end)
 end
+ui.buildBoard()
 
 do
 	local HttpService = game:GetService("HttpService")
 	local FILE_NAME = "moddy_settings.json"
 	local restored = false
-	local autoMods = true
+	local autoMods = false
 	local autoTheme = true
 
 	local function refreshAutoButtons()
@@ -8600,7 +9535,7 @@ do
 		end
 		if autoTheme then
 			data.theme = audioLevels.theme
-			data.menuType = audioLevels.getMenuType and audioLevels.getMenuType() or nil
+			data.board = audioLevels.getBoard and audioLevels.getBoard() or nil
 			data.effect = audioLevels.getEffect and audioLevels.getEffect() or nil
 			data.trail = audioLevels.getTrail and audioLevels.getTrail() or nil
 			data.background = audioLevels.getBackground and audioLevels.getBackground() or nil
@@ -8652,11 +9587,8 @@ do
 			autoTheme = false
 		end
 		refreshAutoButtons()
-		if type(data.theme) == "string" and audioLevels.applyTheme then
-			pcall(audioLevels.applyTheme, data.theme)
-		end
-		if type(data.menuType) == "string" and audioLevels.setMenuType then
-			pcall(audioLevels.setMenuType, data.menuType)
+		if type(data.board) == "table" and audioLevels.setBoard then
+			pcall(audioLevels.setBoard, data.board)
 		end
 		if type(data.background) == "string" and audioLevels.setBackground then
 			audioLevels.setBackground(data.background)
